@@ -1,13 +1,12 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import OrdinaryInput from "../../components/OrdinaryInput";
 import { Combobox } from "../../components/ui/combobox";
 
-type CoaAccount = {
-  ID: number;
-  AccountDescription: string;
-  AccountLongDesc: string;
+type LookupOption = {
+  value: string;
+  label: string;
+  search_text: string;
 };
 
 type Inventory = {
@@ -24,6 +23,11 @@ type Inventory = {
     ID?: string | number | null;
     id?: string | number | null;
   } | null;
+};
+
+type InventoryManageResponse = {
+  rows?: Inventory[];
+  account_options?: LookupOption[];
 };
 
 type InventoryFormValues = {
@@ -58,11 +62,10 @@ const toCurrency = (value: unknown) => {
 
 export default function InventoryList() {
   const [inventories, setInventories] = useState<Inventory[]>([]);
-  const [accounts, setAccounts] = useState<CoaAccount[]>([]);
+  const [accountOptions, setAccountOptions] = useState<LookupOption[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [accountsError, setAccountsError] = useState("");
   const [selectedInventory, setSelectedInventory] = useState<Inventory | null>(
     null,
   );
@@ -78,83 +81,39 @@ export default function InventoryList() {
     defaultValues: EMPTY_FORM,
   });
 
-  const loadInventories = async () => {
+  const loadManageData = async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      const inventoriesRes = await fetch("http://localhost:8080/inventories", {
+      const res = await fetch("http://localhost:8080/inventories/manage", {
         method: "GET",
         credentials: "include",
       });
 
-      if (!inventoriesRes.ok) {
-        throw new Error("Failed to load inventories");
+      if (!res.ok) {
+        throw new Error("Failed to load inventory data");
       }
 
-      const inventoriesData = await inventoriesRes.json();
-
-      const inventoryList = Array.isArray(inventoriesData)
-        ? inventoriesData
-        : inventoriesData?.data;
-
-      setInventories(Array.isArray(inventoryList) ? inventoryList : []);
+      const data = (await res.json()) as InventoryManageResponse;
+      setInventories(Array.isArray(data.rows) ? data.rows : []);
+      setAccountOptions(
+        Array.isArray(data.account_options) ? data.account_options : [],
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load inventory list");
+      setError(
+        err instanceof Error ? err.message : "Failed to load inventory data",
+      );
       setInventories([]);
+      setAccountOptions([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadInventories();
+    void loadManageData();
   }, []);
-
-  useEffect(() => {
-    const loadAccounts = async () => {
-      try {
-        setAccountsError("");
-        const res = await fetch("http://localhost:8080/chart-of-accounts/coa-items", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to load COA accounts");
-        }
-
-        const data = await res.json();
-        const accountList = Array.isArray(data) ? data : data?.data;
-        setAccounts(Array.isArray(accountList) ? accountList : []);
-      } catch (err) {
-        setAccountsError(
-          err instanceof Error ? err.message : "Failed to load COA accounts",
-        );
-      }
-    };
-
-    loadAccounts();
-  }, []);
-
-  const accountOptions = useMemo(
-    () =>
-      accounts.map((account) => {
-        const accountId = toStr(account.ID);
-        const accountName = toStr(account.AccountDescription);
-        const accountLongDesc = toStr(account.AccountLongDesc);
-        const label = accountLongDesc
-          ? `${accountName} - ${accountLongDesc}`
-          : accountName;
-
-        return {
-          id: accountId,
-          label,
-          searchText: `${accountName} ${accountLongDesc} ${accountId}`.toLowerCase(),
-        };
-      }),
-    [accounts],
-  );
 
   const rows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -247,7 +206,7 @@ export default function InventoryList() {
 
       alert("Inventory updated successfully.");
       closeModifyModal();
-      await loadInventories();
+      await loadManageData();
     } catch (err) {
       setUpdateError(
         err instanceof Error ? err.message : "Failed to update inventory",
@@ -392,9 +351,9 @@ export default function InventoryList() {
                         value={field.value || ""}
                         onValueChange={field.onChange}
                         items={accountOptions.map((option) => ({
-                          value: option.id,
+                          value: option.value,
                           label: option.label,
-                          searchText: option.searchText,
+                          searchText: option.search_text,
                         }))}
                         placeholder="Select account no or name..."
                         searchPlaceholder="Search account no or name..."
@@ -408,10 +367,6 @@ export default function InventoryList() {
                     </p>
                   )}
                 </div>
-
-                {accountsError && (
-                  <p className="md:col-span-2 text-sm text-rose-600">{accountsError}</p>
-                )}
 
                 {updateError && (
                   <p className="md:col-span-2 text-sm text-rose-600">{updateError}</p>

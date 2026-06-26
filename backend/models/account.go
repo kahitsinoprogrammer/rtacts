@@ -24,6 +24,17 @@ type CreateAccountRequest struct {
 	ContactNo   string `json:"contact_no"`
 }
 
+type UpdateAccountRequest struct {
+	Username    *string `json:"username"`
+	Email       *string `json:"email"`
+	FirstName   *string `json:"first_name"`
+	LastName    *string `json:"last_name"`
+	MiddleName  *string `json:"middle_name"`
+	DateOfBirth *string `json:"date_of_birth"`
+	ContactNo   *string `json:"contact_no"`
+	IsActive    *bool   `json:"is_active"`
+}
+
 // DTO for OTP verification
 type VerifyOTPRequest struct {
 	UserID string `json:"user_id"`
@@ -123,6 +134,7 @@ type AccountListItem struct {
 	FirstName      string    `json:"first_name"`
 	LastName       string    `json:"last_name"`
 	MiddleName     string    `json:"middle_name"`
+	DateOfBirth    string    `json:"date_of_birth"`
 	UserType       string    `json:"user_type"`
 	ContactNo      string    `json:"contact_no"`
 	Status         string    `json:"status"`

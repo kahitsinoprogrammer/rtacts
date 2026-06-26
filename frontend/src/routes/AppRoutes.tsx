@@ -19,6 +19,7 @@ import CVcreate from "../pages/cv/CVcreate";
 import CVlist from "../pages/cv/CVlist";
 import InventoryCreate from "../pages/inventory/InventoryCreate";
 import InventoryList from "../pages/inventory/inventoryList";
+import CompanySettings from "../pages/settings/CompanySettings";
 const AppRoutes = () => {
   return (
     <Routes>
@@ -52,6 +53,7 @@ const AppRoutes = () => {
           <Route path="/checkvoucher/view" element={<CVlist />} />
           <Route path="/inventory/create" element={<InventoryCreate />} />
           <Route path="/inventory/view" element={<InventoryList />} />
+          <Route path="/settings/company" element={<CompanySettings />} />
         </Route>
       </Route>
     </Routes>

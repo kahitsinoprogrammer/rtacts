@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Modal } from "../../components/Modal";
 
 type Supplier = {
   supplier_name?: string | null;
@@ -43,6 +44,8 @@ type CheckVoucher = {
   created_at?: string;
   ApprovedDate?: string | null;
   approved_date?: string | null;
+  RejectRemarks?: string | null;
+  reject_remarks?: string | null;
   Supplier?: Supplier | null;
   supplier?: Supplier | null;
   PreparedByUser?: PreparedByUser | null;
@@ -62,6 +65,11 @@ const toDateDisplay = (value?: string | null): string => {
   return date.toLocaleString();
 };
 
+const toStr = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
+
 const normalizeStatus = (status?: string): string => {
   if (!status) return "Unknown";
   return status
@@ -76,7 +84,7 @@ const statusPillClass = (status?: string): string => {
   if (normalized.includes("approved")) {
     return "bg-emerald-100 text-emerald-800 ring-emerald-200";
   }
-  if (normalized.includes("pending")) {
+  if (normalized.includes("awaiting") || normalized.includes("pending")) {
     return "bg-amber-100 text-amber-800 ring-amber-200";
   }
   if (normalized.includes("rejected") || normalized.includes("cancel")) {
@@ -85,21 +93,69 @@ const statusPillClass = (status?: string): string => {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 };
 
+const canDecideVoucher = (status?: string): boolean => {
+  const normalized = (status || "").trim().toLowerCase();
+  return normalized === "awaiting approval" || normalized === "pending";
+};
+
+const getVoucherId = (voucher: CheckVoucher): string =>
+  String(voucher.ID || voucher.id || "");
+
+const getRejectRemarks = (voucher: CheckVoucher): string =>
+  toStr(voucher.RejectRemarks ?? voucher.reject_remarks).trim();
+
+const getErrorMessage = async (response: Response, fallback: string) => {
+  const raw = (await response.text()).trim();
+  if (!raw) return `${fallback} (${response.status})`;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.error === "string" && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    return `${fallback} (${response.status}: ${raw})`;
+  }
+
+  return `${fallback} (${response.status})`;
+};
+
 export default function CVlist() {
   const [vouchers, setVouchers] = useState<CheckVoucher[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingVoucherId, setUpdatingVoucherId] = useState<string | null>(null);
-  const [expandedItemsByVoucher, setExpandedItemsByVoucher] = useState<Record<string, boolean>>({});
+  const [expandedItemsByVoucher, setExpandedItemsByVoucher] = useState<
+    Record<string, boolean>
+  >({});
+  const [rejectTarget, setRejectTarget] = useState<CheckVoucher | null>(null);
+  const [rejectRemarks, setRejectRemarks] = useState("");
+  const [rejectError, setRejectError] = useState("");
 
-  const updateVoucherStatus = async (voucher: CheckVoucher, status: "Approved" | "Rejected") => {
-    const voucherId = voucher.ID || voucher.id;
-    if (!voucherId) return;
+  const closeRejectModal = () => {
+    setRejectTarget(null);
+    setRejectRemarks("");
+    setRejectError("");
+  };
+
+  const updateVoucherStatus = async (
+    voucher: CheckVoucher,
+    status: "Approved" | "Rejected",
+    remarks?: string,
+  ) => {
+    const voucherId = getVoucherId(voucher);
+    if (!voucherId) return false;
 
     try {
       setUpdatingVoucherId(voucherId);
       setError("");
+      setRejectError("");
+
+      const payload =
+        status === "Rejected"
+          ? { status, reject_remarks: remarks?.trim() || null }
+          : { status };
 
       const response = await fetch(
         `http://localhost:8080/check-vouchers/${voucherId}/status`,
@@ -109,29 +165,52 @@ export default function CVlist() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(payload),
         },
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to ${status.toLowerCase()} check voucher`);
+        throw new Error(
+          await getErrorMessage(
+            response,
+            `Failed to ${status.toLowerCase()} check voucher`,
+          ),
+        );
       }
+
+      const nextApprovedDate =
+        status === "Approved" ? new Date().toISOString() : null;
+      const nextRejectRemarks = status === "Rejected" ? remarks?.trim() || null : null;
 
       setVouchers((prev) =>
         prev.map((item) => {
-          const itemId = item.ID || item.id;
+          const itemId = getVoucherId(item);
           if (itemId !== voucherId) return item;
           return {
             ...item,
             Status: status,
-            status,
+            status: status,
+            ApprovedDate: nextApprovedDate,
+            approved_date: nextApprovedDate,
+            RejectRemarks: nextRejectRemarks,
+            reject_remarks: nextRejectRemarks,
           };
         }),
       );
+
+      return true;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : `Failed to ${status.toLowerCase()} check voucher`,
-      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : `Failed to ${status.toLowerCase()} check voucher`;
+
+      if (status === "Rejected") {
+        setRejectError(message);
+      } else {
+        setError(message);
+      }
+      return false;
     } finally {
       setUpdatingVoucherId(null);
     }
@@ -153,7 +232,6 @@ export default function CVlist() {
         }
 
         const vouchersData = await vouchersRes.json();
-
         const list = Array.isArray(vouchersData) ? vouchersData : vouchersData?.data;
 
         setVouchers(Array.isArray(list) ? list : []);
@@ -167,7 +245,7 @@ export default function CVlist() {
       }
     };
 
-    fetchVouchers();
+    void fetchVouchers();
   }, []);
 
   const filteredVouchers = useMemo(() => {
@@ -180,12 +258,32 @@ export default function CVlist() {
       const status = voucher.Status || voucher.status || "";
       const supplierName = supplier?.supplier_name || "";
       const supplierEmail = supplier?.email || "";
+      const rejectRemarksText = getRejectRemarks(voucher);
 
-      return `${id} ${supplierName} ${supplierEmail} ${status}`
+      return `${id} ${supplierName} ${supplierEmail} ${status} ${rejectRemarksText}`
         .toLowerCase()
         .includes(keyword);
     });
   }, [search, vouchers]);
+
+  const submitReject = async () => {
+    if (!rejectTarget) return;
+
+    const trimmedRemarks = rejectRemarks.trim();
+    if (!trimmedRemarks) {
+      setRejectError("Reject remarks are required.");
+      return;
+    }
+
+    const success = await updateVoucherStatus(
+      rejectTarget,
+      "Rejected",
+      trimmedRemarks,
+    );
+    if (success) {
+      closeRejectModal();
+    }
+  };
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -201,7 +299,7 @@ export default function CVlist() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by CV ID, supplier, email, or status..."
+            placeholder="Search by CV ID, supplier, email, status, or remarks..."
             className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 sm:max-w-md"
           />
         </div>
@@ -223,9 +321,13 @@ export default function CVlist() {
       {!isLoading && !error && filteredVouchers.length > 0 && (
         <ul className="space-y-4">
           {filteredVouchers.map((voucher, index) => {
-            const id = voucher.ID || voucher.id || "-";
-            const status = normalizeStatus(voucher.Status || voucher.status);
+            const id = getVoucherId(voucher) || "-";
+            const rawStatus = voucher.Status || voucher.status;
+            const status = normalizeStatus(rawStatus);
             const createdAt = toDateDisplay(voucher.CreatedAt || voucher.created_at);
+            const approvedDate = toDateDisplay(
+              voucher.ApprovedDate || voucher.approved_date,
+            );
             const supplier = voucher.Supplier || voucher.supplier;
             const preparedBy = voucher.PreparedByUser;
             const preparedByName = preparedBy
@@ -235,6 +337,8 @@ export default function CVlist() {
             const voucherKey = String(voucher.ID || voucher.id || `${id}-${index}`);
             const isExpanded = Boolean(expandedItemsByVoucher[voucherKey]);
             const displayedItems = isExpanded ? items : items.slice(0, 2);
+            const decisionPending = canDecideVoucher(rawStatus);
+            const rejectRemarksText = getRejectRemarks(voucher);
 
             return (
               <li
@@ -247,7 +351,7 @@ export default function CVlist() {
                     <p className="text-sm font-semibold text-slate-900">{id}</p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusPillClass(voucher.Status || voucher.status)}`}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusPillClass(rawStatus)}`}
                   >
                     {status}
                   </span>
@@ -269,7 +373,19 @@ export default function CVlist() {
                     <span className="font-medium text-slate-900">Prepared by:</span>{" "}
                     {preparedByName || preparedBy?.Username || "-"}
                   </p>
+                  {approvedDate !== "-" && (
+                    <p>
+                      <span className="font-medium text-slate-900">Approved on:</span>{" "}
+                      {approvedDate}
+                    </p>
+                  )}
                 </div>
+
+                {rejectRemarksText && (
+                  <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                    <span className="font-medium">Reject remarks:</span> {rejectRemarksText}
+                  </div>
+                )}
 
                 <div className="mt-3 border-t border-slate-200 pt-3">
                   <p className="mb-2 text-sm font-medium text-slate-900">Line Items</p>
@@ -319,16 +435,24 @@ export default function CVlist() {
                 <div className="mt-3 flex gap-2 border-t border-slate-200 pt-3">
                   <button
                     type="button"
-                    onClick={() => updateVoucherStatus(voucher, "Approved")}
-                    disabled={updatingVoucherId === (voucher.ID || voucher.id)}
+                    onClick={() => void updateVoucherStatus(voucher, "Approved")}
+                    disabled={
+                      updatingVoucherId === getVoucherId(voucher) || !decisionPending
+                    }
                     className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Approve
                   </button>
                   <button
                     type="button"
-                    onClick={() => updateVoucherStatus(voucher, "Rejected")}
-                    disabled={updatingVoucherId === (voucher.ID || voucher.id)}
+                    onClick={() => {
+                      setRejectTarget(voucher);
+                      setRejectRemarks(rejectRemarksText);
+                      setRejectError("");
+                    }}
+                    disabled={
+                      updatingVoucherId === getVoucherId(voucher) || !decisionPending
+                    }
                     className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Reject
@@ -339,6 +463,56 @@ export default function CVlist() {
           })}
         </ul>
       )}
+
+      <Modal
+        isOpen={Boolean(rejectTarget)}
+        onClose={closeRejectModal}
+        title="Reject Check Voucher"
+        maxWidthClass="max-w-xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeRejectModal}
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={Boolean(updatingVoucherId)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submitReject()}
+              className="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+              disabled={Boolean(updatingVoucherId)}
+            >
+              {updatingVoucherId && rejectTarget && updatingVoucherId === getVoucherId(rejectTarget)
+                ? "Rejecting..."
+                : "Reject"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Add the reason for rejecting this check voucher. This will be saved and shown in the list.
+          </p>
+
+          <div className="flex flex-col">
+            <label className="block text-sm font-medium text-slate-700">
+              Reject Remarks
+            </label>
+            <textarea
+              rows={4}
+              value={rejectRemarks}
+              onChange={(e) => setRejectRemarks(e.target.value)}
+              placeholder="Enter rejection remarks..."
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+
+          {rejectError && <p className="text-sm text-rose-600">{rejectError}</p>}
+        </div>
+      </Modal>
     </div>
   );
 }

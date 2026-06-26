@@ -14,6 +14,8 @@ const DashboardLayout = () => {
   const fullName = user
     ? [user.FirstName, user.MiddleName, user.LastName].filter(Boolean).join(" ")
     : "";
+  const userType = (user?.UserType ?? user?.user_type ?? "").trim().toLowerCase();
+  const canManageCompanySettings = userType === "genesis_admin";
 
   const handleLogout = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -75,6 +77,11 @@ const DashboardLayout = () => {
             <li style={{ marginBottom: "0.5rem" }}>
               <a href="/dashboard">Dashboard</a>
             </li>
+            {canManageCompanySettings && (
+              <li style={{ marginBottom: "0.5rem" }}>
+                <a href="/settings/company">Company Settings</a>
+              </li>
+            )}
             {/* USER ACCOUNTS */}
             <li style={{ marginBottom: "0.5rem" }}>
               <a href="#" onClick={toggleUserMenu}>

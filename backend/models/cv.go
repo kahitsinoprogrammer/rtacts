@@ -18,14 +18,21 @@ type CreateCheckVoucherRequest struct {
 	Status     *string            `json:"status"`
 	Items      []CheckVoucherItem `json:"items"`
 }
+
+type UpdateCheckVoucherStatusRequest struct {
+	Status        string  `json:"status"`
+	RejectRemarks *string `json:"reject_remarks"`
+}
+
 type CheckVoucher struct {
-	ID           string `gorm:"primaryKey;size:20" json:"id"`
-	SupplierID   uuid.UUID
-	CompanyID    uuid.UUID
-	PreparedBy   *uuid.UUID
-	ApprovedBy   *uuid.UUID
-	Status       string
-	ApprovedDate *time.Time
+	ID            string `gorm:"primaryKey;size:20" json:"id"`
+	SupplierID    uuid.UUID
+	CompanyID     uuid.UUID
+	PreparedBy    *uuid.UUID
+	ApprovedBy    *uuid.UUID
+	Status        string
+	ApprovedDate  *time.Time
+	RejectRemarks *string `json:"reject_remarks,omitempty"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

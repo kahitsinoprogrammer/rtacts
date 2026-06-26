@@ -7,6 +7,10 @@ export type User = {
   FirstName: string;
   MiddleName?: string;
   LastName: string;
+  UserType?: string;
+  CompanyId?: string;
+  user_type?: string;
+  company_id?: string;
 };
 
 export const UserContext = createContext<User | null>(null);

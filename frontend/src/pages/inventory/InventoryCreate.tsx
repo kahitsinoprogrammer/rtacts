@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import OrdinaryInput from "../../components/OrdinaryInput";
 import { Combobox } from "../../components/ui/combobox";
-type CoaAccount = {
-  ID: number;
-  AccountDescription: string;
-  AccountLongDesc: string;
+
+type LookupOption = {
+  value: string;
+  label: string;
+  search_text: string;
+};
+
+type InventoryLookupsResponse = {
+  account_options?: LookupOption[];
 };
 
 type FormValues = {
@@ -15,13 +20,8 @@ type FormValues = {
   coaId: string;
 };
 
-const toStr = (value: unknown) => {
-  if (value === null || value === undefined) return "";
-  return String(value);
-};
-
 export default function InventoryCreate() {
-  const [accounts, setAccounts] = useState<CoaAccount[]>([]);
+  const [accountOptions, setAccountOptions] = useState<LookupOption[]>([]);
   const [loadError, setLoadError] = useState("");
 
   const {
@@ -43,44 +43,28 @@ export default function InventoryCreate() {
     const loadAccounts = async () => {
       try {
         setLoadError("");
-        const res = await fetch("http://localhost:8080/chart-of-accounts/coa-items", {
+        const res = await fetch("http://localhost:8080/inventories/lookups", {
           method: "GET",
           credentials: "include",
         });
 
         if (!res.ok) {
-          throw new Error("Failed to load COA accounts");
+          throw new Error("Failed to load inventory lookups");
         }
 
-        const data = await res.json();
-        const accountList = Array.isArray(data) ? data : data?.data;
-        setAccounts(Array.isArray(accountList) ? accountList : []);
+        const data = (await res.json()) as InventoryLookupsResponse;
+        setAccountOptions(
+          Array.isArray(data.account_options) ? data.account_options : [],
+        );
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "Failed to load COA accounts");
+        setLoadError(
+          err instanceof Error ? err.message : "Failed to load inventory lookups",
+        );
       }
     };
 
     loadAccounts();
   }, []);
-
-  const accountOptions = useMemo(
-    () =>
-      accounts.map((account) => {
-        const accountId = toStr(account.ID);
-        const accountName = toStr(account.AccountDescription);
-        const accountLongDesc = toStr(account.AccountLongDesc);
-        const label = accountLongDesc
-          ? `${accountName} - ${accountLongDesc}`
-          : accountName;
-
-        return {
-          id: accountId,
-          label,
-          searchText: `${accountName} ${accountLongDesc} ${accountId}`.toLowerCase(),
-        };
-      }),
-    [accounts],
-  );
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
@@ -200,9 +184,9 @@ export default function InventoryCreate() {
                         value={field.value || ""}
                         onValueChange={field.onChange}
                         items={accountOptions.map((option) => ({
-                          value: option.id,
+                          value: option.value,
                           label: option.label,
-                          searchText: option.searchText,
+                          searchText: option.search_text,
                         }))}
                         placeholder="Select account no or name..."
                         searchPlaceholder="Search account no or name..."

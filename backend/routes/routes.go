@@ -8,6 +8,7 @@ import (
 
 func RegisterRoutes(r *gin.Engine) {
 	accountController := controllers.NewAccountController()
+	companySettingsController := controllers.NewCompanySettingsController()
 	coaController := controllers.NewChartOfAccountsController()
 	supplierController := controllers.NewSupplierController()
 	customerController := controllers.NewCustomerController()
@@ -20,8 +21,11 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.Use(accountController.AuthMiddleware())
 	{
 		protected.GET("/accounts", accountController.ViewAccounts)
+		protected.PUT("/accounts/:id", accountController.UpdateAccount)
 		protected.GET("/accounts/me", accountController.Me)
 		protected.POST("/accounts/logout", accountController.Logout)
+		protected.GET("/settings/company", companySettingsController.GetCompanySettings)
+		protected.PUT("/settings/company", companySettingsController.UpdateCompanySettings)
 		coa := protected.Group("/chart-of-accounts")
 		{
 			coa.POST("/account-types", coaController.CreateAccountType)
@@ -72,8 +76,10 @@ func RegisterRoutes(r *gin.Engine) {
 
 		checkVouchers := protected.Group("/check-vouchers")
 		{
+			checkVouchers.GET("/lookups", cvController.GetCreateLookups)
 			checkVouchers.POST("", cvController.CreateCheckVoucher)
 			checkVouchers.GET("", cvController.ViewCheckVouchers)
+			checkVouchers.PATCH("/:id/status", cvController.UpdateCheckVoucherStatus)
 
 			// later:
 			// checkVouchers.GET("", cvController.ViewCheckVouchers)
@@ -83,6 +89,8 @@ func RegisterRoutes(r *gin.Engine) {
 
 		inventory := protected.Group("/inventories")
 		{
+			inventory.GET("/lookups", inventoryController.GetInventoryLookups)
+			inventory.GET("/manage", inventoryController.GetInventoryManageData)
 			inventory.POST("", inventoryController.CreateInventory)
 			inventory.GET("", inventoryController.ViewInventory)
 			inventory.PUT("/:id", inventoryController.UpdateInventory)

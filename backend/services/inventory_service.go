@@ -17,6 +17,44 @@ func NewInventoryService() *InventoryService {
 	return &InventoryService{}
 }
 
+func (s *InventoryService) GetInventoryLookups(userID string) (*models.InventoryLookupsResponse, error) {
+	user, err := getCurrentUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	accountOptions, err := buildAccountLookupOptions(user.CompanyId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.InventoryLookupsResponse{
+		AccountOptions: accountOptions,
+	}, nil
+}
+
+func (s *InventoryService) GetInventoryManageData(userID string) (*models.InventoryManageResponse, error) {
+	rows, err := s.ViewInventory(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := getCurrentUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	accountOptions, err := buildAccountLookupOptions(user.CompanyId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.InventoryManageResponse{
+		Rows:           rows,
+		AccountOptions: accountOptions,
+	}, nil
+}
+
 func (s *InventoryService) CreateInventory(userID string, req models.CreateInventoryRequest) error {
 	req.ProductName = strings.TrimSpace(req.ProductName)
 	req.UnitMeasurement = strings.TrimSpace(req.UnitMeasurement)

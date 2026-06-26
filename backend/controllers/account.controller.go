@@ -4,6 +4,7 @@ import (
 	"backend/models"
 	"backend/services"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -174,16 +175,16 @@ func (ac *AccountController) Me(c *gin.Context) {
 		return
 	}
 
-	response := models.LoginResponse{
-		UserID:     user.UserID,
-		Username:   user.Username,
-		Email:      user.Email,
-		FirstName:  user.FirstName,
-		LastName:   user.LastName,
-		MiddleName: user.MiddleName,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"UserID":     user.UserID,
+		"Username":   user.Username,
+		"Email":      user.Email,
+		"FirstName":  user.FirstName,
+		"LastName":   user.LastName,
+		"MiddleName": user.MiddleName,
+		"UserType":   user.UserType,
+		"CompanyId":  user.CompanyId,
+	})
 }
 
 func (ac *AccountController) ViewAccounts(c *gin.Context) {
@@ -206,6 +207,39 @@ func (ac *AccountController) ViewAccounts(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, rows)
+}
+
+func (ac *AccountController) UpdateAccount(c *gin.Context) {
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userID, ok := userIDVal.(string)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	accountID := strings.TrimSpace(c.Param("id"))
+	if accountID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "account id is required"})
+		return
+	}
+
+	var req models.UpdateAccountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	if err := ac.accountService.UpdateAccount(userID, accountID, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
 func (ac *AccountController) Logout(c *gin.Context) {

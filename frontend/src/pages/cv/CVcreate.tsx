@@ -1,40 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { Combobox } from "../../components/ui/combobox";
-type Supplier = {
-  supplier_id: string;
-  company_id: string;
-  supplier_name: string;
-  email: string;
-  contact_person: string;
-  phone: string;
-  address: string;
-  tax_id: string;
-  status: string;
-  notes: string;
-  date_registered: string;
-  date_updated: string;
+
+type LookupOption = {
+  value: string;
+  label: string;
+  search_text: string;
 };
 
-type Customer = {
-  customer_id: string;
-  company_id: string;
-  customer_name: string;
-  email: string;
+type SupplierLookupOption = LookupOption & {
   contact_person: string;
-  phone: string;
-  address: string;
-  tax_id: string;
-  status: string;
-  notes: string;
-  date_registered: string;
-  date_updated: string;
 };
 
-type CoaAccount = {
-  ID: number;
-  AccountDescription: string;
-  AccountLongDesc: string;
+type CheckVoucherLookupsResponse = {
+  suppliers?: SupplierLookupOption[];
+  customers?: LookupOption[];
+  accounts?: LookupOption[];
 };
 
 type CVItemForm = {
@@ -60,15 +41,10 @@ const emptyItem = (): CVItemForm => ({
   vatType: "",
 });
 
-const toStr = (value: unknown) => {
-  if (value === null || value === undefined) return "";
-  return String(value);
-};
-
 export default function CVcreate() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [accounts, setAccounts] = useState<CoaAccount[]>([]);
+  const [supplierOptions, setSupplierOptions] = useState<SupplierLookupOption[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<LookupOption[]>([]);
+  const [accountOptions, setAccountOptions] = useState<LookupOption[]>([]);
   const [loadError, setLoadError] = useState("");
 
   const {
@@ -98,42 +74,19 @@ export default function CVcreate() {
       try {
         setLoadError("");
 
-        const [suppliersRes, customersRes, accountsRes] = await Promise.all([
-          fetch("http://localhost:8080/suppliers", {
-            method: "GET",
-            credentials: "include",
-          }),
-          fetch("http://localhost:8080/customers", {
-            method: "GET",
-            credentials: "include",
-          }),
-          fetch("http://localhost:8080/chart-of-accounts/coa-items", {
-            method: "GET",
-            credentials: "include",
-          }),
-        ]);
+        const res = await fetch("http://localhost:8080/check-vouchers/lookups", {
+          method: "GET",
+          credentials: "include",
+        });
 
-        if (!suppliersRes.ok || !customersRes.ok || !accountsRes.ok) {
+        if (!res.ok) {
           throw new Error("Failed to load lookup data");
         }
 
-        const suppliersData = await suppliersRes.json();
-        const customersData = await customersRes.json();
-        const accountsData = await accountsRes.json();
-
-        const supplierList = Array.isArray(suppliersData)
-          ? suppliersData
-          : suppliersData?.data;
-        const customerList = Array.isArray(customersData)
-          ? customersData
-          : customersData?.data;
-        const accountList = Array.isArray(accountsData)
-          ? accountsData
-          : accountsData?.data;
-
-        setSuppliers(Array.isArray(supplierList) ? supplierList : []);
-        setCustomers(Array.isArray(customerList) ? customerList : []);
-        setAccounts(Array.isArray(accountList) ? accountList : []);
+        const data = (await res.json()) as CheckVoucherLookupsResponse;
+        setSupplierOptions(Array.isArray(data.suppliers) ? data.suppliers : []);
+        setCustomerOptions(Array.isArray(data.customers) ? data.customers : []);
+        setAccountOptions(Array.isArray(data.accounts) ? data.accounts : []);
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load lookup data",
@@ -144,69 +97,10 @@ export default function CVcreate() {
     loadLookups();
   }, []);
 
-  const supplierOptions = useMemo(
-    () =>
-      suppliers.map((supplier) => {
-        const supplierId = toStr(supplier.supplier_id);
-        const supplierEmail = toStr(supplier.email);
-        const supplierName = toStr(supplier.supplier_name);
-        const supplierContactPerson = toStr(supplier.contact_person);
-        const label = supplierEmail
-          ? `${supplierName} (${supplierEmail})`
-          : supplierName;
-
-        return {
-          id: supplierId,
-          label,
-          searchText: `${supplierName} ${supplierEmail}`.toLowerCase(),
-          contact_person: supplierContactPerson,
-        };
-      }),
-    [suppliers],
-  );
-
   const selectedSupplierId = watch("supplierId");
   const supplierById = useMemo(
-    () => new Map(supplierOptions.map((option) => [option.id, option])),
+    () => new Map(supplierOptions.map((option) => [option.value, option])),
     [supplierOptions],
-  );
-
-  const accountOptions = useMemo(
-    () =>
-      accounts.map((account) => {
-        const accountId = toStr(account.ID);
-        const accountName = toStr(account.AccountDescription);
-        const accountLongDesc = toStr(account.AccountLongDesc);
-        const label = accountLongDesc
-          ? `${accountName} - ${accountLongDesc}`
-          : accountName;
-
-        return {
-          id: accountId,
-          label,
-          searchText: `${accountName} ${accountLongDesc} ${accountId}`.toLowerCase(),
-        };
-      }),
-    [accounts],
-  );
-
-  const customerOptions = useMemo(
-    () =>
-      customers.map((customer) => {
-        const customerId = toStr(customer.customer_id);
-        const customerName = toStr(customer.customer_name);
-        const customerEmail = toStr(customer.email);
-        const label = customerEmail
-          ? `${customerName} (${customerEmail})`
-          : customerName;
-
-        return {
-          id: customerId,
-          label,
-          searchText: `${customerName} ${customerEmail}`.toLowerCase(),
-        };
-      }),
-    [customers],
   );
 
   useEffect(() => {
@@ -229,18 +123,8 @@ export default function CVcreate() {
       return;
     }
 
-    const selectedSupplier = suppliers.find(
-      (supplier) => toStr(supplier.supplier_id) === values.supplierId,
-    );
-
-    if (!selectedSupplier?.company_id) {
-      alert("Selected supplier is missing company information.");
-      return;
-    }
-
     const payload = {
       supplier_id: values.supplierId,
-      company_id: toStr(selectedSupplier.company_id),
       items: values.items.map((item, index) => ({
         account_id: item.accountId ? Number(item.accountId) : null,
         customer_id: item.customerId || null,
@@ -327,9 +211,9 @@ export default function CVcreate() {
                           value={field.value || ""}
                           onValueChange={field.onChange}
                           items={supplierOptions.map((option) => ({
-                            value: option.id,
+                            value: option.value,
                             label: option.label,
-                            searchText: option.searchText,
+                            searchText: option.search_text,
                           }))}
                           placeholder="Select supplier..."
                           searchPlaceholder="Search supplier..."
@@ -387,9 +271,9 @@ export default function CVcreate() {
                               value={field.value || ""}
                               onValueChange={field.onChange}
                               items={accountOptions.map((option) => ({
-                                value: option.id,
+                                value: option.value,
                                 label: option.label,
-                                searchText: option.searchText,
+                                searchText: option.search_text,
                               }))}
                               placeholder="Select account no or name..."
                               searchPlaceholder="Search account no or name..."
@@ -417,9 +301,9 @@ export default function CVcreate() {
                               value={field.value || ""}
                               onValueChange={field.onChange}
                               items={customerOptions.map((option) => ({
-                                value: option.id,
+                                value: option.value,
                                 label: option.label,
-                                searchText: option.searchText,
+                                searchText: option.search_text,
                               }))}
                               placeholder="Select customer..."
                               searchPlaceholder="Search customer..."
