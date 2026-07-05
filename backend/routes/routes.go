@@ -94,6 +94,7 @@ func RegisterRoutes(r *gin.Engine) {
 			invoices.GET("/lookups", invoiceController.GetCreateLookups)
 			invoices.POST("/preview", invoiceController.PreviewInvoice)
 			invoices.POST("", invoiceController.CreateInvoice)
+			invoices.PATCH("/:id/status", invoiceController.UpdateInvoiceStatus)
 			invoices.GET("", invoiceController.ViewInvoices)
 		}
 

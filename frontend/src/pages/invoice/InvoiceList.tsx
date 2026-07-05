@@ -75,6 +75,29 @@ const statusPillClass = (status?: string): string => {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 };
 
+const canDecideInvoice = (status?: string): boolean => {
+  const normalized = (status || "").trim().toLowerCase();
+  return normalized === "awaiting approval" || normalized === "pending";
+};
+
+const getInvoiceId = (invoice: Invoice): string => String(invoice.id || "");
+
+const getErrorMessage = async (response: Response, fallback: string) => {
+  const raw = (await response.text()).trim();
+  if (!raw) return `${fallback} (${response.status})`;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.error === "string" && parsed.error.trim()) {
+      return parsed.error;
+    }
+  } catch {
+    return `${fallback} (${response.status}: ${raw})`;
+  }
+
+  return `${fallback} (${response.status})`;
+};
+
 const getPreparedByName = (preparedBy?: PreparedByUser | null): string => {
   if (!preparedBy) return "";
   const name = `${preparedBy.LastName || ""}${
@@ -95,9 +118,70 @@ export default function InvoiceList() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
   const [expandedItemsByInvoice, setExpandedItemsByInvoice] = useState<
     Record<string, boolean>
   >({});
+
+  const updateInvoiceStatus = async (
+    invoice: Invoice,
+    status: "Approved" | "Rejected",
+  ) => {
+    const invoiceId = getInvoiceId(invoice);
+    if (!invoiceId) return false;
+
+    try {
+      setUpdatingInvoiceId(invoiceId);
+      setError("");
+
+      const response = await fetch(
+        `http://localhost:8080/invoices/${invoiceId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ status }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(
+            response,
+            `Failed to ${status.toLowerCase()} invoice`,
+          ),
+        );
+      }
+
+      const nextApprovedDate =
+        status === "Approved" ? new Date().toISOString() : null;
+
+      setInvoices((prev) =>
+        prev.map((item) =>
+          getInvoiceId(item) !== invoiceId
+            ? item
+            : {
+                ...item,
+                status,
+                approved_date: nextApprovedDate,
+              },
+        ),
+      );
+
+      return true;
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${status.toLowerCase()} invoice`,
+      );
+      return false;
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -186,7 +270,8 @@ export default function InvoiceList() {
         <ul className="space-y-4">
           {filteredInvoices.map((invoice, index) => {
             const id = invoice.id || "-";
-            const status = normalizeStatus(invoice.status);
+            const rawStatus = invoice.status;
+            const status = normalizeStatus(rawStatus);
             const createdAt = toDateDisplay(invoice.created_at);
             const approvedDate = toDateDisplay(invoice.approved_date);
             const preparedByName = getPreparedByName(invoice.PreparedByUser);
@@ -194,6 +279,7 @@ export default function InvoiceList() {
             const invoiceKey = String(invoice.id || `${id}-${index}`);
             const isExpanded = Boolean(expandedItemsByInvoice[invoiceKey]);
             const displayedItems = isExpanded ? items : items.slice(0, 2);
+            const decisionPending = canDecideInvoice(rawStatus);
 
             return (
               <li
@@ -208,7 +294,7 @@ export default function InvoiceList() {
                     <p className="text-sm font-semibold text-slate-900">{id}</p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusPillClass(invoice.status)}`}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusPillClass(rawStatus)}`}
                   >
                     {status}
                   </span>
@@ -289,6 +375,33 @@ export default function InvoiceList() {
                       {isExpanded ? "See less" : `See more (${items.length - 2} more)`}
                     </button>
                   )}
+                </div>
+
+                <div className="mt-3 flex gap-2 border-t border-slate-200 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => void updateInvoiceStatus(invoice, "Approved")}
+                    disabled={
+                      updatingInvoiceId === getInvoiceId(invoice) || !decisionPending
+                    }
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {updatingInvoiceId === getInvoiceId(invoice)
+                      ? "Updating..."
+                      : "Approve"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void updateInvoiceStatus(invoice, "Rejected")}
+                    disabled={
+                      updatingInvoiceId === getInvoiceId(invoice) || !decisionPending
+                    }
+                    className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {updatingInvoiceId === getInvoiceId(invoice)
+                      ? "Updating..."
+                      : "Reject"}
+                  </button>
                 </div>
               </li>
             );

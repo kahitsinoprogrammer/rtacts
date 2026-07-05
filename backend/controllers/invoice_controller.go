@@ -4,6 +4,7 @@ import (
 	"backend/models"
 	"backend/services"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -76,6 +77,33 @@ func (ic *InvoiceController) PreviewInvoice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, preview)
+}
+
+func (ic *InvoiceController) UpdateInvoiceStatus(c *gin.Context) {
+	userID, ok := getAuthenticatedUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	invoiceID := strings.TrimSpace(c.Param("id"))
+	if invoiceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invoice id is required"})
+		return
+	}
+
+	var req models.UpdateInvoiceStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	if err := ic.invoiceService.UpdateInvoiceStatus(userID, invoiceID, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
 func (ic *InvoiceController) ViewInvoices(c *gin.Context) {

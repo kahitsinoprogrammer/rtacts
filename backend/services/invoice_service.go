@@ -5,6 +5,7 @@ import (
 	"backend/models"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -107,6 +108,64 @@ func (s *InvoiceService) CreateInvoice(userID string, req models.CreateInvoiceRe
 	}
 
 	return createdInvoice, nil
+}
+
+func (s *InvoiceService) UpdateInvoiceStatus(userID string, invoiceID string, req models.UpdateInvoiceStatusRequest) error {
+	user, err := getCurrentUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	invoiceID = strings.TrimSpace(invoiceID)
+	if invoiceID == "" {
+		return errors.New("invoice id is required")
+	}
+
+	status := strings.TrimSpace(strings.ToLower(req.Status))
+	if status == "" {
+		return errors.New("status is required")
+	}
+
+	return config.DB.Transaction(func(tx *gorm.DB) error {
+		var invoice models.Invoice
+		if err := tx.
+			Model(&models.Invoice{}).
+			Joins("JOIN users prepared_users ON prepared_users.user_id = invoice.prepared_by").
+			Where("invoice.id = ? AND prepared_users.company_id = ?", invoiceID, user.CompanyId).
+			First(&invoice).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("invoice not found")
+			}
+			return err
+		}
+
+		currentStatus := strings.TrimSpace(strings.ToLower(invoice.Status))
+		if currentStatus == "approved" || currentStatus == "rejected" {
+			return errors.New("invoice has already been finalized")
+		}
+
+		now := time.Now().UTC()
+		updates := map[string]interface{}{
+			"updated_at": now,
+		}
+
+		switch status {
+		case "approved":
+			updates["status"] = "Approved"
+			updates["approved_by"] = user.UserID
+			updates["approved_date"] = now
+		case "rejected":
+			updates["status"] = "Rejected"
+			updates["approved_by"] = nil
+			updates["approved_date"] = nil
+		default:
+			return errors.New("status must be Approved or Rejected")
+		}
+
+		return tx.Model(&models.Invoice{}).
+			Where("id = ?", invoiceID).
+			Updates(updates).Error
+	})
 }
 
 func (s *InvoiceService) ViewInvoices(userID string) ([]models.Invoice, error) {

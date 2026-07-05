@@ -20,6 +20,10 @@ type PreviewInvoiceRequest struct {
 	Items []CreateInvoiceItemRequest `json:"items"`
 }
 
+type UpdateInvoiceStatusRequest struct {
+	Status string `json:"status"`
+}
+
 type InvoiceTaxType string
 
 const (
