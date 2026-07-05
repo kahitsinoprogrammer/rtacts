@@ -39,6 +39,7 @@ type CheckVoucher struct {
 
 	Supplier       *Supplier          `json:"supplier,omitempty" gorm:"foreignKey:SupplierID;references:SupplierID"`
 	PreparedByUser *Users             `json:"PreparedByUser,omitempty" gorm:"foreignKey:PreparedBy;references:UserID"`
+	ApprovedByUser *Users             `json:"ApprovedByUser,omitempty" gorm:"foreignKey:ApprovedBy;references:UserID"`
 	Items          []CheckVoucherItem `gorm:"foreignKey:CheckVoucherID;references:ID"`
 }
 
@@ -46,6 +47,7 @@ type CheckVoucherItem struct {
 	ID             string     `gorm:"primaryKey;size:20" json:"id"`
 	CheckVoucherID string     `json:"check_voucher_id"`
 	AccountID      *int       `json:"account_id"`
+	Account        *Coa       `json:"account,omitempty" gorm:"foreignKey:AccountID;references:ID"`
 	CustomerID     *uuid.UUID `json:"customer_id"`
 	Customer       *Customer  `json:"customer,omitempty" gorm:"foreignKey:CustomerID;references:CustomerID"`
 	Debit          float64    `json:"debit"`

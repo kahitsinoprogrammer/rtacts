@@ -116,3 +116,35 @@ func buildCustomerLookupOptions(companyID uuid.UUID) ([]models.LookupOption, err
 
 	return options, nil
 }
+
+func buildProductLookupOptions(companyID uuid.UUID) ([]models.ProductLookupOption, error) {
+	var products []models.Inventory
+	if err := config.DB.
+		Model(&models.Inventory{}).
+		Where("company_id = ?", companyID).
+		Order("product_name ASC").
+		Find(&products).Error; err != nil {
+		return nil, err
+	}
+
+	options := make([]models.ProductLookupOption, 0, len(products))
+	for _, product := range products {
+		productID := product.ProductCode.String()
+		productName := strings.TrimSpace(product.ProductName)
+		unitMeasurement := strings.TrimSpace(product.UnitMeasurement)
+		label := productName
+		if unitMeasurement != "" {
+			label = fmt.Sprintf("%s (%s)", productName, unitMeasurement)
+		}
+
+		options = append(options, models.ProductLookupOption{
+			Value:           productID,
+			Label:           label,
+			SearchText:      strings.ToLower(fmt.Sprintf("%s %s %s", productName, unitMeasurement, productID)),
+			UnitMeasurement: unitMeasurement,
+			UnitPrice:       product.CostPerUnit,
+		})
+	}
+
+	return options, nil
+}

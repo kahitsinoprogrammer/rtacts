@@ -9,6 +9,7 @@ const DashboardLayout = () => {
   const [showCustomerMenu, setShowCustomerMenu] = useState(false);
   const [showSupplierMenu, setShowSupplierMenu] = useState(false);
   const [checkVoucherMenu, setCheckVoucherMenu] = useState(false);
+  const [invoiceMenu, setInvoiceMenu] = useState(false);
   const [inventoryMenu, setinventoryMenu] = useState(false);
 
   const fullName = user
@@ -55,6 +56,11 @@ const DashboardLayout = () => {
   const toggleCheckVoucherMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setCheckVoucherMenu((prev) => !prev);
+  };
+
+  const toggleInvoiceMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setInvoiceMenu((prev) => !prev);
   };
 
     const toggleInventoryMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -188,6 +194,29 @@ const DashboardLayout = () => {
                   </li>
                   <li style={{ marginBottom: "0.25rem" }}>
                     <a href="/inventory/view">View Inventory</a>
+                  </li>
+                </ul>
+              )}
+            </li>
+
+            <li style={{ marginBottom: "0.5rem" }}>
+              <a href="#" onClick={toggleInvoiceMenu}>
+                Invoice {invoiceMenu ? "▲" : "▼"}
+              </a>
+
+              {invoiceMenu && (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    paddingLeft: "1rem",
+                    marginTop: "0.25rem",
+                  }}
+                >
+                  <li style={{ marginBottom: "0.25rem" }}>
+                    <a href="/invoice/create">Create Invoice</a>
+                  </li>
+                  <li style={{ marginBottom: "0.25rem" }}>
+                    <a href="/invoice/view">View Invoice</a>
                   </li>
                 </ul>
               )}

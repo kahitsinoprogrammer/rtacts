@@ -22,8 +22,8 @@ func main() {
 
 	config.ConnectDatabase()
 
-	if err := config.DB.AutoMigrate(&models.CompanySettings{}); err != nil {
-		panic(fmt.Sprintf("failed to migrate company_settings: %v", err))
+	if err := config.DB.AutoMigrate(&models.Companies{}); err != nil {
+		panic(fmt.Sprintf("failed to migrate companies: %v", err))
 	}
 
 	r := gin.Default()

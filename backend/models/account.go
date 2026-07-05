@@ -48,9 +48,23 @@ type VerifyOTPRequest struct {
 /* ========== COMPANIES MODEL ========== */
 
 type Companies struct {
-	CompanyId      uuid.UUID `gorm:"primaryKey"`
-	DateRegistered time.Time
-	DateUpdated    time.Time
+	CompanyId      uuid.UUID `gorm:"column:company_id;primaryKey" json:"company_id"`
+	CompanyName    string    `gorm:"column:company_name;type:varchar(255)" json:"company_name"`
+	CompanyEmail   string    `gorm:"column:company_email;type:varchar(255)" json:"company_email"`
+	CompanyPhone   string    `gorm:"column:company_phone;type:varchar(50)" json:"company_phone"`
+	Tin            string    `gorm:"column:tin;type:varchar(100)" json:"tin"`
+	BlockNo        string    `gorm:"column:block_no;type:varchar(100)" json:"block_no"`
+	City           string    `gorm:"column:city;type:varchar(150)" json:"city"`
+	Province       string    `gorm:"column:province;type:varchar(150)" json:"province"`
+	Country        string    `gorm:"column:country;type:varchar(150)" json:"country"`
+	Zip            string    `gorm:"column:zip;type:varchar(20)" json:"zip"`
+	CompanyPic     string    `gorm:"column:company_pic;type:text" json:"company_pic"`
+	DateRegistered time.Time `gorm:"column:date_registered" json:"date_registered"`
+	DateUpdated    time.Time `gorm:"column:date_updated" json:"date_updated"`
+}
+
+func (Companies) TableName() string {
+	return "companies"
 }
 
 func (c *Companies) BeforeCreate(tx *gorm.DB) (err error) {

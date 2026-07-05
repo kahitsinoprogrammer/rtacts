@@ -98,6 +98,9 @@ const canDecideVoucher = (status?: string): boolean => {
   return normalized === "awaiting approval" || normalized === "pending";
 };
 
+const canDownloadVoucher = (status?: string): boolean =>
+  (status || "").trim().toLowerCase() === "approved";
+
 const getVoucherId = (voucher: CheckVoucher): string =>
   String(voucher.ID || voucher.id || "");
 
@@ -126,6 +129,9 @@ export default function CVlist() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingVoucherId, setUpdatingVoucherId] = useState<string | null>(null);
+  const [downloadingVoucherId, setDownloadingVoucherId] = useState<string | null>(
+    null,
+  );
   const [expandedItemsByVoucher, setExpandedItemsByVoucher] = useState<
     Record<string, boolean>
   >({});
@@ -213,6 +219,52 @@ export default function CVlist() {
       return false;
     } finally {
       setUpdatingVoucherId(null);
+    }
+  };
+
+  const downloadVoucherExcel = async (voucher: CheckVoucher) => {
+    const voucherId = getVoucherId(voucher);
+    if (!voucherId) return;
+
+    try {
+      setDownloadingVoucherId(voucherId);
+      setError("");
+
+      const response = await fetch(
+        `http://localhost:8080/check-vouchers/${voucherId}/excel`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Failed to download check voucher"),
+        );
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
+      const fileName = fileNameMatch?.[1] || `${voucherId}.xlsx`;
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to download check voucher",
+      );
+    } finally {
+      setDownloadingVoucherId(null);
     }
   };
 
@@ -338,6 +390,7 @@ export default function CVlist() {
             const isExpanded = Boolean(expandedItemsByVoucher[voucherKey]);
             const displayedItems = isExpanded ? items : items.slice(0, 2);
             const decisionPending = canDecideVoucher(rawStatus);
+            const downloadReady = canDownloadVoucher(rawStatus);
             const rejectRemarksText = getRejectRemarks(voucher);
 
             return (
@@ -456,6 +509,18 @@ export default function CVlist() {
                     className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Reject
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void downloadVoucherExcel(voucher)}
+                    disabled={
+                      downloadingVoucherId === getVoucherId(voucher) || !downloadReady
+                    }
+                    className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {downloadingVoucherId === getVoucherId(voucher)
+                      ? "Downloading..."
+                      : "Download Excel"}
                   </button>
                 </div>
               </li>
