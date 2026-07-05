@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Modal } from "../../components/Modal";
 import {
   invoiceTaxTypeLabels,
   normalizeInvoiceTaxType,
@@ -36,6 +37,8 @@ type Invoice = {
   created_at?: string;
   approved_date?: string | null;
   status?: string;
+  RejectRemarks?: string | null;
+  reject_remarks?: string | null;
   PreparedByUser?: PreparedByUser | null;
   items?: InvoiceItem[];
 };
@@ -43,6 +46,11 @@ type Invoice = {
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toStr = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  return String(value);
 };
 
 const toDateDisplay = (value?: string | null): string => {
@@ -81,6 +89,9 @@ const canDecideInvoice = (status?: string): boolean => {
 };
 
 const getInvoiceId = (invoice: Invoice): string => String(invoice.id || "");
+
+const getRejectRemarks = (invoice: Invoice): string =>
+  toStr(invoice.RejectRemarks ?? invoice.reject_remarks).trim();
 
 const getErrorMessage = async (response: Response, fallback: string) => {
   const raw = (await response.text()).trim();
@@ -122,10 +133,20 @@ export default function InvoiceList() {
   const [expandedItemsByInvoice, setExpandedItemsByInvoice] = useState<
     Record<string, boolean>
   >({});
+  const [rejectTarget, setRejectTarget] = useState<Invoice | null>(null);
+  const [rejectRemarks, setRejectRemarks] = useState("");
+  const [rejectError, setRejectError] = useState("");
+
+  const closeRejectModal = () => {
+    setRejectTarget(null);
+    setRejectRemarks("");
+    setRejectError("");
+  };
 
   const updateInvoiceStatus = async (
     invoice: Invoice,
     status: "Approved" | "Rejected",
+    remarks?: string,
   ) => {
     const invoiceId = getInvoiceId(invoice);
     if (!invoiceId) return false;
@@ -133,6 +154,12 @@ export default function InvoiceList() {
     try {
       setUpdatingInvoiceId(invoiceId);
       setError("");
+      setRejectError("");
+
+      const payload =
+        status === "Rejected"
+          ? { status, reject_remarks: remarks?.trim() || null }
+          : { status };
 
       const response = await fetch(
         `http://localhost:8080/invoices/${invoiceId}/status`,
@@ -142,7 +169,7 @@ export default function InvoiceList() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(payload),
         },
       );
 
@@ -157,6 +184,7 @@ export default function InvoiceList() {
 
       const nextApprovedDate =
         status === "Approved" ? new Date().toISOString() : null;
+      const nextRejectRemarks = status === "Rejected" ? remarks?.trim() || null : null;
 
       setInvoices((prev) =>
         prev.map((item) =>
@@ -166,17 +194,24 @@ export default function InvoiceList() {
                 ...item,
                 status,
                 approved_date: nextApprovedDate,
+                RejectRemarks: nextRejectRemarks,
+                reject_remarks: nextRejectRemarks,
               },
         ),
       );
 
       return true;
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : `Failed to ${status.toLowerCase()} invoice`,
-      );
+          : `Failed to ${status.toLowerCase()} invoice`;
+
+      if (status === "Rejected") {
+        setRejectError(message);
+      } else {
+        setError(message);
+      }
       return false;
     } finally {
       setUpdatingInvoiceId(null);
@@ -220,6 +255,7 @@ export default function InvoiceList() {
       const id = invoice.id || "";
       const customer = invoice.customer || "";
       const status = invoice.status || "";
+      const rejectRemarksText = getRejectRemarks(invoice);
       const productText = (invoice.items || [])
         .map(
           (item) =>
@@ -227,11 +263,30 @@ export default function InvoiceList() {
         )
         .join(" ");
 
-      return `${id} ${customer} ${status} ${productText}`
+      return `${id} ${customer} ${status} ${rejectRemarksText} ${productText}`
         .toLowerCase()
         .includes(keyword);
     });
   }, [invoices, search]);
+
+  const submitReject = async () => {
+    if (!rejectTarget) return;
+
+    const trimmedRemarks = rejectRemarks.trim();
+    if (!trimmedRemarks) {
+      setRejectError("Reject remarks are required.");
+      return;
+    }
+
+    const success = await updateInvoiceStatus(
+      rejectTarget,
+      "Rejected",
+      trimmedRemarks,
+    );
+    if (success) {
+      closeRejectModal();
+    }
+  };
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -247,7 +302,7 @@ export default function InvoiceList() {
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by invoice ID, customer, status, or product..."
+            placeholder="Search by invoice ID, customer, status, remarks, or product..."
             className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 sm:max-w-md"
           />
         </div>
@@ -280,6 +335,7 @@ export default function InvoiceList() {
             const isExpanded = Boolean(expandedItemsByInvoice[invoiceKey]);
             const displayedItems = isExpanded ? items : items.slice(0, 2);
             const decisionPending = canDecideInvoice(rawStatus);
+            const rejectRemarksText = getRejectRemarks(invoice);
 
             return (
               <li
@@ -324,6 +380,12 @@ export default function InvoiceList() {
                     </p>
                   )}
                 </div>
+
+                {rejectRemarksText && (
+                  <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                    <span className="font-medium">Reject remarks:</span> {rejectRemarksText}
+                  </div>
+                )}
 
                 <div className="mt-3 border-t border-slate-200 pt-3">
                   <p className="mb-2 text-sm font-medium text-slate-900">Line Items</p>
@@ -392,7 +454,11 @@ export default function InvoiceList() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void updateInvoiceStatus(invoice, "Rejected")}
+                    onClick={() => {
+                      setRejectTarget(invoice);
+                      setRejectRemarks(rejectRemarksText);
+                      setRejectError("");
+                    }}
                     disabled={
                       updatingInvoiceId === getInvoiceId(invoice) || !decisionPending
                     }
@@ -408,6 +474,56 @@ export default function InvoiceList() {
           })}
         </ul>
       )}
+
+      <Modal
+        isOpen={Boolean(rejectTarget)}
+        onClose={closeRejectModal}
+        title="Reject Invoice"
+        maxWidthClass="max-w-xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeRejectModal}
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              disabled={Boolean(updatingInvoiceId)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submitReject()}
+              className="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+              disabled={Boolean(updatingInvoiceId)}
+            >
+              {updatingInvoiceId && rejectTarget && updatingInvoiceId === getInvoiceId(rejectTarget)
+                ? "Rejecting..."
+                : "Reject"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Add the reason for rejecting this invoice. This will be saved and shown in the list.
+          </p>
+
+          <div className="flex flex-col">
+            <label className="block text-sm font-medium text-slate-700">
+              Reject Remarks
+            </label>
+            <textarea
+              rows={4}
+              value={rejectRemarks}
+              onChange={(event) => setRejectRemarks(event.target.value)}
+              placeholder="Enter rejection remarks..."
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            />
+          </div>
+
+          {rejectError && <p className="text-sm text-rose-600">{rejectError}</p>}
+        </div>
+      </Modal>
     </div>
   );
 }

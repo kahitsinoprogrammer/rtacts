@@ -126,6 +126,8 @@ func (s *InvoiceService) UpdateInvoiceStatus(userID string, invoiceID string, re
 		return errors.New("status is required")
 	}
 
+	rejectRemarks := strings.TrimSpace(derefOptionalString(req.RejectRemarks))
+
 	return config.DB.Transaction(func(tx *gorm.DB) error {
 		var invoice models.Invoice
 		if err := tx.
@@ -154,10 +156,15 @@ func (s *InvoiceService) UpdateInvoiceStatus(userID string, invoiceID string, re
 			updates["status"] = "Approved"
 			updates["approved_by"] = user.UserID
 			updates["approved_date"] = now
+			updates["reject_remarks"] = nil
 		case "rejected":
+			if rejectRemarks == "" {
+				return errors.New("reject_remarks is required when rejecting")
+			}
 			updates["status"] = "Rejected"
 			updates["approved_by"] = nil
 			updates["approved_date"] = nil
+			updates["reject_remarks"] = rejectRemarks
 		default:
 			return errors.New("status must be Approved or Rejected")
 		}

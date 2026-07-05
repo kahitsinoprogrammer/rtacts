@@ -21,7 +21,8 @@ type PreviewInvoiceRequest struct {
 }
 
 type UpdateInvoiceStatusRequest struct {
-	Status string `json:"status"`
+	Status        string  `json:"status"`
+	RejectRemarks *string `json:"reject_remarks"`
 }
 
 type InvoiceTaxType string
@@ -77,6 +78,7 @@ type Invoice struct {
 	ApprovedBy   *uuid.UUID `gorm:"type:uuid" json:"approved_by"`
 	ApprovedDate *time.Time `gorm:"type:timestamptz" json:"approved_date"`
 	Status       string     `gorm:"type:text" json:"status"`
+	RejectRemarks *string   `gorm:"type:text" json:"reject_remarks,omitempty"`
 	PreparedBy   *uuid.UUID `gorm:"type:uuid" json:"prepared_by"`
 
 	PreparedByUser *Users        `json:"PreparedByUser,omitempty" gorm:"foreignKey:PreparedBy;references:UserID"`
