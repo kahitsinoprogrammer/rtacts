@@ -22,10 +22,21 @@ type InvoiceLookupsResponse = {
   products?: ProductLookupOption[];
 };
 
+type PreviewInvoiceItem = {
+  line_no: number;
+  unit_price: number;
+  amount: number;
+  total_amount: number;
+};
+
+type PreviewInvoiceResponse = {
+  items?: PreviewInvoiceItem[];
+  total_amount?: number;
+};
+
 type InvoiceItemForm = {
   productId: string;
   quantity: string;
-  unitPrice: string;
   taxType: InvoiceTaxType;
 };
 
@@ -38,23 +49,17 @@ type InvoiceFormValues = {
 const emptyItem = (): InvoiceItemForm => ({
   productId: "",
   quantity: "1",
-  unitPrice: "",
   taxType: "vatable",
 });
-
-const toAmount = (quantity: string, unitPrice: string): number => {
-  const parsedQuantity = Number(quantity);
-  const parsedUnitPrice = Number(unitPrice);
-  if (!Number.isFinite(parsedQuantity) || !Number.isFinite(parsedUnitPrice)) {
-    return 0;
-  }
-  return parsedQuantity * parsedUnitPrice;
-};
 
 export default function InvoiceCreate() {
   const [customerOptions, setCustomerOptions] = useState<LookupOption[]>([]);
   const [productOptions, setProductOptions] = useState<ProductLookupOption[]>([]);
   const [loadError, setLoadError] = useState("");
+  const [preview, setPreview] = useState<PreviewInvoiceResponse>({
+    items: [],
+    total_amount: 0,
+  });
 
   const {
     register,
@@ -121,13 +126,68 @@ export default function InvoiceCreate() {
     setValue("customer", selectedCustomer?.label || "", { shouldDirty: true });
   }, [customerById, selectedCustomerId, setValue]);
 
-  const invoiceTotal = useMemo(
+  useEffect(() => {
+    const items = (watchedItems || []).flatMap((item, index) => {
+      if (!item?.productId) {
+        return [];
+      }
+
+      const parsedQuantity = Number(item.quantity);
+      return [
+        {
+          product_id: item.productId,
+          line_no: index + 1,
+          quantity: Number.isFinite(parsedQuantity) ? parsedQuantity : 0,
+          tax_type: item.taxType,
+        },
+      ];
+    });
+
+    if (items.length === 0) {
+      setPreview({ items: [], total_amount: 0 });
+      return;
+    }
+
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const res = await fetch("http://localhost:8080/invoices/preview", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to preview invoice");
+        }
+
+        const data = (await res.json()) as PreviewInvoiceResponse;
+        setPreview({
+          items: Array.isArray(data.items) ? data.items : [],
+          total_amount:
+            typeof data.total_amount === "number" ? data.total_amount : 0,
+        });
+      } catch (err) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        setPreview({ items: [], total_amount: 0 });
+      }
+    }, 250);
+
+    return () => {
+      abortController.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [watchedItems]);
+
+  const previewByLineNo = useMemo(
     () =>
-      (watchedItems || []).reduce(
-        (sum, item) => sum + toAmount(item.quantity, item.unitPrice),
-        0,
-      ),
-    [watchedItems],
+      new Map((preview.items || []).map((item) => [item.line_no, item])),
+    [preview.items],
   );
 
   const onSubmit = async (values: InvoiceFormValues) => {
@@ -143,7 +203,6 @@ export default function InvoiceCreate() {
         product_id: item.productId,
         line_no: index + 1,
         quantity: Number(item.quantity),
-        unit_price: Number(item.unitPrice),
         tax_type: item.taxType,
       })),
     };
@@ -260,7 +319,7 @@ export default function InvoiceCreate() {
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">
-                  Total: {invoiceTotal.toFixed(2)}
+                  Total: {(preview.total_amount || 0).toFixed(2)}
                 </p>
               </div>
 
@@ -271,10 +330,7 @@ export default function InvoiceCreate() {
                   );
                   const selectedTaxType =
                     watchedItems[index]?.taxType || "vatable";
-                  const lineAmount = toAmount(
-                    watchedItems[index]?.quantity || "",
-                    watchedItems[index]?.unitPrice || "",
-                  );
+                  const previewItem = previewByLineNo.get(index + 1);
 
                   return (
                     <div
@@ -293,15 +349,7 @@ export default function InvoiceCreate() {
                             render={({ field: productField }) => (
                               <Combobox
                                 value={productField.value || ""}
-                                onValueChange={(value) => {
-                                  productField.onChange(value);
-                                  const product = productById.get(value);
-                                  setValue(
-                                    `items.${index}.unitPrice`,
-                                    product ? String(product.unit_price) : "",
-                                    { shouldDirty: true },
-                                  );
-                                }}
+                                onValueChange={productField.onChange}
                                 items={productOptions.map((option) => ({
                                   value: option.value,
                                   label: option.label,
@@ -348,22 +396,17 @@ export default function InvoiceCreate() {
                             Unit Price
                           </label>
                           <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-                            {...register(`items.${index}.unitPrice` as const, {
-                              required: "Unit price is required",
-                              validate: (value) =>
-                                Number(value) >= 0 ||
-                                "Unit price must be zero or greater",
-                            })}
+                            type="text"
+                            value={
+                              previewItem
+                                ? previewItem.unit_price.toFixed(2)
+                                : "-"
+                            }
+                            readOnly
+                            disabled
+                            tabIndex={-1}
+                            className="mt-1 w-full cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                           />
-                          {errors.items?.[index]?.unitPrice && (
-                            <p className="mt-1 text-xs text-rose-600">
-                              {errors.items[index]?.unitPrice?.message}
-                            </p>
-                          )}
                         </div>
 
                         <div>
@@ -385,7 +428,11 @@ export default function InvoiceCreate() {
                           <input
                             type="text"
                             readOnly
-                            value={lineAmount.toFixed(2)}
+                            value={
+                              previewItem
+                                ? previewItem.total_amount.toFixed(2)
+                                : "-"
+                            }
                             className="mt-1 w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
                           />
                         </div>

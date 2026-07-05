@@ -92,6 +92,7 @@ func RegisterRoutes(r *gin.Engine) {
 		invoices := protected.Group("/invoices")
 		{
 			invoices.GET("/lookups", invoiceController.GetCreateLookups)
+			invoices.POST("/preview", invoiceController.PreviewInvoice)
 			invoices.POST("", invoiceController.CreateInvoice)
 			invoices.GET("", invoiceController.ViewInvoices)
 		}

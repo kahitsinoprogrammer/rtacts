@@ -32,6 +32,7 @@ type InvoiceItem = {
 type Invoice = {
   id?: string;
   customer?: string;
+  total_amount?: number;
   created_at?: string;
   approved_date?: string | null;
   status?: string;
@@ -193,10 +194,6 @@ export default function InvoiceList() {
             const invoiceKey = String(invoice.id || `${id}-${index}`);
             const isExpanded = Boolean(expandedItemsByInvoice[invoiceKey]);
             const displayedItems = isExpanded ? items : items.slice(0, 2);
-            const invoiceTotal = items.reduce(
-              (sum, item) => sum + toNumber(item.total_amount ?? item.amount),
-              0,
-            );
 
             return (
               <li
@@ -224,7 +221,7 @@ export default function InvoiceList() {
                   </p>
                   <p>
                     <span className="font-medium text-slate-900">Total:</span>{" "}
-                    {invoiceTotal.toFixed(2)}
+                    {toNumber(invoice.total_amount).toFixed(2)}
                   </p>
                   <p>
                     <span className="font-medium text-slate-900">Created:</span>{" "}

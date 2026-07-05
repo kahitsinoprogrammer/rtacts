@@ -56,6 +56,28 @@ func (ic *InvoiceController) CreateInvoice(c *gin.Context) {
 	c.JSON(http.StatusCreated, invoice)
 }
 
+func (ic *InvoiceController) PreviewInvoice(c *gin.Context) {
+	userID, ok := getAuthenticatedUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req models.PreviewInvoiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	preview, err := ic.invoiceService.PreviewInvoice(userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, preview)
+}
+
 func (ic *InvoiceController) ViewInvoices(c *gin.Context) {
 	userID, ok := getAuthenticatedUserID(c)
 	if !ok {

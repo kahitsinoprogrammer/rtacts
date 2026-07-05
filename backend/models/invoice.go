@@ -16,6 +16,10 @@ type CreateInvoiceRequest struct {
 	Items    []CreateInvoiceItemRequest `json:"items"`
 }
 
+type PreviewInvoiceRequest struct {
+	Items []CreateInvoiceItemRequest `json:"items"`
+}
+
 type InvoiceTaxType string
 
 const (
@@ -28,8 +32,22 @@ type CreateInvoiceItemRequest struct {
 	ProductID uuid.UUID      `json:"product_id"`
 	LineNo    int            `json:"line_no"`
 	Quantity  float64        `json:"quantity"`
-	UnitPrice float64        `json:"unit_price"`
 	TaxType   InvoiceTaxType `json:"tax_type"`
+}
+
+type PreviewInvoiceItem struct {
+	ProductID   uuid.UUID      `json:"product_id"`
+	LineNo      int            `json:"line_no"`
+	Quantity    float64        `json:"quantity"`
+	UnitPrice   float64        `json:"unit_price"`
+	Amount      float64        `json:"amount"`
+	TotalAmount float64        `json:"total_amount"`
+	TaxType     InvoiceTaxType `json:"tax_type"`
+}
+
+type PreviewInvoiceResponse struct {
+	Items       []PreviewInvoiceItem `json:"items"`
+	TotalAmount float64              `json:"total_amount"`
 }
 
 func (t InvoiceTaxType) Normalize() (InvoiceTaxType, error) {
@@ -49,6 +67,7 @@ func (t InvoiceTaxType) Normalize() (InvoiceTaxType, error) {
 type Invoice struct {
 	ID           string     `gorm:"primaryKey;size:50" json:"id"`
 	Customer     string     `gorm:"type:varchar(255);not null" json:"customer"`
+	TotalAmount  float64    `gorm:"-" json:"total_amount"`
 	CreatedAt    time.Time  `gorm:"type:timestamptz" json:"created_at"`
 	UpdatedAt    time.Time  `gorm:"type:timestamptz" json:"updated_at"`
 	ApprovedBy   *uuid.UUID `gorm:"type:uuid" json:"approved_by"`
