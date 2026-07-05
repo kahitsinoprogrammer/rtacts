@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { Combobox } from "../../components/ui/combobox";
+import {
+  invoiceTaxTypeOptions,
+  type InvoiceTaxType,
+} from "./taxTypes";
 
 type LookupOption = {
   value: string;
@@ -22,7 +26,7 @@ type InvoiceItemForm = {
   productId: string;
   quantity: string;
   unitPrice: string;
-  vatable: boolean;
+  taxType: InvoiceTaxType;
 };
 
 type InvoiceFormValues = {
@@ -35,7 +39,7 @@ const emptyItem = (): InvoiceItemForm => ({
   productId: "",
   quantity: "1",
   unitPrice: "",
-  vatable: true,
+  taxType: "vatable",
 });
 
 const toAmount = (quantity: string, unitPrice: string): number => {
@@ -119,7 +123,7 @@ export default function InvoiceCreate() {
 
   const invoiceTotal = useMemo(
     () =>
-      watchedItems.reduce(
+      (watchedItems || []).reduce(
         (sum, item) => sum + toAmount(item.quantity, item.unitPrice),
         0,
       ),
@@ -140,7 +144,7 @@ export default function InvoiceCreate() {
         line_no: index + 1,
         quantity: Number(item.quantity),
         unit_price: Number(item.unitPrice),
-        vatable: Boolean(item.vatable),
+        tax_type: item.taxType,
       })),
     };
 
@@ -252,7 +256,7 @@ export default function InvoiceCreate() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">Items</h3>
                   <p className="text-xs text-slate-500">
-                    Add products, quantities, and VAT flags for this invoice.
+                    Add products, quantities, and tax types for this invoice.
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">
@@ -265,6 +269,8 @@ export default function InvoiceCreate() {
                   const selectedProduct = productById.get(
                     watchedItems[index]?.productId || "",
                   );
+                  const selectedTaxType =
+                    watchedItems[index]?.taxType || "vatable";
                   const lineAmount = toAmount(
                     watchedItems[index]?.quantity || "",
                     watchedItems[index]?.unitPrice || "",
@@ -386,14 +392,46 @@ export default function InvoiceCreate() {
                       </div>
 
                       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300"
-                            {...register(`items.${index}.vatable` as const)}
-                          />
-                          Vatable
-                        </label>
+                        <div className="flex-1">
+                          <p className="block text-sm font-medium text-slate-700">
+                            Tax Type
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {invoiceTaxTypeOptions.map((option) => {
+                              const isSelected =
+                                selectedTaxType === option.value;
+
+                              return (
+                                <label
+                                  key={option.value}
+                                  className={`inline-flex cursor-pointer items-center justify-center rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
+                                    isSelected
+                                      ? "border-slate-900 bg-slate-900 text-white"
+                                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    value={option.value}
+                                    className="sr-only"
+                                    {...register(
+                                      `items.${index}.taxType` as const,
+                                      {
+                                        required: "Tax type is required",
+                                      },
+                                    )}
+                                  />
+                                  {option.label}
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {errors.items?.[index]?.taxType && (
+                            <p className="mt-1 text-xs text-rose-600">
+                              {errors.items[index]?.taxType?.message}
+                            </p>
+                          )}
+                        </div>
 
                         <button
                           type="button"

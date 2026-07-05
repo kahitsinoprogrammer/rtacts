@@ -94,6 +94,11 @@ func (s *InvoiceService) CreateInvoice(userID string, req models.CreateInvoiceRe
 				return errors.New("unit_price cannot be negative")
 			}
 
+			taxType, err := item.TaxType.Normalize()
+			if err != nil {
+				return err
+			}
+
 			amount := item.Quantity * unitPrice
 			lineNo := item.LineNo
 			if lineNo < 1 {
@@ -107,7 +112,7 @@ func (s *InvoiceService) CreateInvoice(userID string, req models.CreateInvoiceRe
 				Quantity:    item.Quantity,
 				Amount:      amount,
 				TotalAmount: amount,
-				Vatable:     item.Vatable,
+				TaxType:     taxType,
 				UnitPrice:   unitPrice,
 			})
 		}

@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  invoiceTaxTypeLabels,
+  normalizeInvoiceTaxType,
+} from "./taxTypes";
 
 type PreparedByUser = {
   FirstName?: string | null;
@@ -19,7 +23,8 @@ type InvoiceItem = {
   quantity?: number;
   amount?: number;
   total_amount?: number;
-  vatable?: boolean;
+  tax_type?: string | null;
+  vatable?: boolean | string | null;
   unit_price?: number;
   product?: Product | null;
 };
@@ -79,6 +84,11 @@ const getPreparedByName = (preparedBy?: PreparedByUser | null): string => {
   return name || preparedBy.Username || "";
 };
 
+const getTaxTypeLabel = (item: InvoiceItem): string => {
+  const normalized = normalizeInvoiceTaxType(item.tax_type ?? item.vatable);
+  return normalized ? invoiceTaxTypeLabels[normalized] : "-";
+};
+
 export default function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState("");
@@ -126,7 +136,10 @@ export default function InvoiceList() {
       const customer = invoice.customer || "";
       const status = invoice.status || "";
       const productText = (invoice.items || [])
-        .map((item) => item.product?.product_name || item.product_id || "")
+        .map(
+          (item) =>
+            `${item.product?.product_name || item.product_id || ""} ${getTaxTypeLabel(item)}`,
+        )
         .join(" ");
 
       return `${id} ${customer} ${status} ${productText}`
@@ -259,7 +272,7 @@ export default function InvoiceList() {
                               Amount:{" "}
                               {toNumber(item.total_amount ?? item.amount).toFixed(2)}
                             </p>
-                            <p>Vatable: {item.vatable ? "Yes" : "No"}</p>
+                            <p>Tax Type: {getTaxTypeLabel(item)}</p>
                           </li>
                         );
                       })}

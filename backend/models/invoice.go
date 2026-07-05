@@ -12,8 +12,38 @@ import (
 )
 
 type CreateInvoiceRequest struct {
-	Customer string        `json:"customer"`
-	Items    []InvoiceItem `json:"items"`
+	Customer string                     `json:"customer"`
+	Items    []CreateInvoiceItemRequest `json:"items"`
+}
+
+type InvoiceTaxType string
+
+const (
+	InvoiceTaxTypeVatable InvoiceTaxType = "vatable"
+	InvoiceTaxTypeExempt  InvoiceTaxType = "exempt"
+	InvoiceTaxTypeTaxable InvoiceTaxType = "taxable"
+)
+
+type CreateInvoiceItemRequest struct {
+	ProductID uuid.UUID      `json:"product_id"`
+	LineNo    int            `json:"line_no"`
+	Quantity  float64        `json:"quantity"`
+	UnitPrice float64        `json:"unit_price"`
+	TaxType   InvoiceTaxType `json:"tax_type"`
+}
+
+func (t InvoiceTaxType) Normalize() (InvoiceTaxType, error) {
+	normalized := InvoiceTaxType(strings.ToLower(strings.TrimSpace(string(t))))
+	if normalized == "" {
+		return InvoiceTaxTypeVatable, nil
+	}
+
+	switch normalized {
+	case InvoiceTaxTypeVatable, InvoiceTaxTypeExempt, InvoiceTaxTypeTaxable:
+		return normalized, nil
+	default:
+		return "", errors.New("tax_type must be one of: vatable, exempt, taxable")
+	}
 }
 
 type Invoice struct {
@@ -32,15 +62,15 @@ type Invoice struct {
 }
 
 type InvoiceItem struct {
-	ID          string    `gorm:"primaryKey;size:50" json:"id"`
-	InvoiceID   string    `gorm:"size:50" json:"invoice_id"`
-	ProductID   uuid.UUID `gorm:"type:uuid" json:"product_id"`
-	LineNo      int       `json:"line_no"`
-	Quantity    float64   `json:"quantity"`
-	Amount      float64   `json:"amount"`
-	TotalAmount float64   `json:"total_amount"`
-	Vatable     bool      `json:"vatable"`
-	UnitPrice   float64   `gorm:"type:numeric(15,2)" json:"unit_price"`
+	ID          string         `gorm:"primaryKey;size:50" json:"id"`
+	InvoiceID   string         `gorm:"size:50" json:"invoice_id"`
+	ProductID   uuid.UUID      `gorm:"type:uuid" json:"product_id"`
+	LineNo      int            `json:"line_no"`
+	Quantity    float64        `json:"quantity"`
+	Amount      float64        `json:"amount"`
+	TotalAmount float64        `json:"total_amount"`
+	TaxType     InvoiceTaxType `gorm:"column:vatable;type:varchar(20)" json:"tax_type"`
+	UnitPrice   float64        `gorm:"type:numeric(15,2)" json:"unit_price"`
 
 	Product *Inventory `json:"product,omitempty" gorm:"foreignKey:ProductID;references:ProductCode"`
 }
