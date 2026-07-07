@@ -62,12 +62,9 @@ func (s *InvoiceService) CreateInvoice(userID string, req models.CreateInvoiceRe
 		return nil, err
 	}
 
-	customer := strings.TrimSpace(req.Customer)
-	if customer == "" {
+	customerID := strings.TrimSpace(req.Customer)
+	if customerID == "" {
 		return nil, errors.New("customer is required")
-	}
-	if len(customer) > 255 {
-		return nil, errors.New("customer must not exceed 255 characters")
 	}
 	if len(req.Items) == 0 {
 		return nil, errors.New("items are required")
@@ -75,18 +72,26 @@ func (s *InvoiceService) CreateInvoice(userID string, req models.CreateInvoiceRe
 
 	var createdInvoice *models.Invoice
 	err = config.DB.Transaction(func(tx *gorm.DB) error {
-		invoice := &models.Invoice{
-			Customer:   customer,
-			PreparedBy: &user.UserID,
-			Status:     "awaiting approval",
-		}
-
-		if err := tx.Create(invoice).Error; err != nil {
+		customer, err := getCustomerByID(tx, user.CompanyId, customerID)
+		if err != nil {
 			return err
 		}
 
 		items, totalAmount, err := s.computeInvoiceItems(tx, user.CompanyId, req.Items, true)
 		if err != nil {
+			return err
+		}
+
+		invoice := &models.Invoice{
+			Customer:      customer.CustomerID.String(),
+			CustomerName:  strings.TrimSpace(customer.CustomerName),
+			TotalAmount:   totalAmount,
+			PaymentStatus: "not_paid",
+			PreparedBy:    &user.UserID,
+			Status:        "awaiting approval",
+		}
+
+		if err := tx.Create(invoice).Error; err != nil {
 			return err
 		}
 
@@ -198,11 +203,88 @@ func (s *InvoiceService) ViewInvoices(userID string) ([]models.Invoice, error) {
 		return nil, err
 	}
 
+	customerNames, err := getCustomerNamesByStoredIDs(config.DB, user.CompanyId, invoices)
+	if err != nil {
+		return nil, err
+	}
+
 	for index := range invoices {
-		invoices[index].TotalAmount = sumInvoiceItems(invoices[index].Items)
+		if invoices[index].TotalAmount == 0 {
+			invoices[index].TotalAmount = sumInvoiceItems(invoices[index].Items)
+		}
+		invoices[index].CustomerName = customerNames[invoices[index].Customer]
 	}
 
 	return invoices, nil
+}
+
+func getCustomerByID(tx *gorm.DB, companyID uuid.UUID, customerID string) (models.Customer, error) {
+	customerID = strings.TrimSpace(customerID)
+	if customerID == "" {
+		return models.Customer{}, errors.New("customer is required")
+	}
+
+	parsedID, err := uuid.Parse(customerID)
+	if err != nil {
+		return models.Customer{}, errors.New("invalid customer id")
+	}
+
+	var customer models.Customer
+	if err := tx.
+		Where("customer_id = ? AND company_id = ?", parsedID, companyID).
+		First(&customer).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.Customer{}, errors.New("customer not found")
+		}
+		return models.Customer{}, err
+	}
+
+	return customer, nil
+}
+
+func getCustomerNamesByStoredIDs(
+	tx *gorm.DB,
+	companyID uuid.UUID,
+	invoices []models.Invoice,
+) (map[string]string, error) {
+	customerIDs := make([]uuid.UUID, 0, len(invoices))
+	seen := make(map[uuid.UUID]struct{})
+
+	for _, invoice := range invoices {
+		storedID := strings.TrimSpace(invoice.Customer)
+		if storedID == "" {
+			continue
+		}
+
+		parsedID, err := uuid.Parse(storedID)
+		if err != nil {
+			continue
+		}
+		if _, exists := seen[parsedID]; exists {
+			continue
+		}
+
+		seen[parsedID] = struct{}{}
+		customerIDs = append(customerIDs, parsedID)
+	}
+
+	if len(customerIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	var customers []models.Customer
+	if err := tx.
+		Where("company_id = ? AND customer_id IN ?", companyID, customerIDs).
+		Find(&customers).Error; err != nil {
+		return nil, err
+	}
+
+	customerNames := make(map[string]string, len(customers))
+	for _, customer := range customers {
+		customerNames[customer.CustomerID.String()] = strings.TrimSpace(customer.CustomerName)
+	}
+
+	return customerNames, nil
 }
 
 func (s *InvoiceService) computeInvoiceItems(

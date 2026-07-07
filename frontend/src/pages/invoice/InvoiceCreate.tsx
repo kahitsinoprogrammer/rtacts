@@ -191,14 +191,14 @@ export default function InvoiceCreate() {
   );
 
   const onSubmit = async (values: InvoiceFormValues) => {
-    const customer = values.customer.trim();
-    if (!customer) {
+    const customerId = values.customerId.trim();
+    if (!customerId) {
       alert("Please select a valid customer from the list.");
       return;
     }
 
     const payload = {
-      customer,
+      customer: customerId,
       items: values.items.map((item, index) => ({
         product_id: item.productId,
         line_no: index + 1,

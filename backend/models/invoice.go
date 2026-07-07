@@ -70,16 +70,18 @@ func (t InvoiceTaxType) Normalize() (InvoiceTaxType, error) {
 }
 
 type Invoice struct {
-	ID           string     `gorm:"primaryKey;size:50" json:"id"`
-	Customer     string     `gorm:"type:varchar(255);not null" json:"customer"`
-	TotalAmount  float64    `gorm:"-" json:"total_amount"`
-	CreatedAt    time.Time  `gorm:"type:timestamptz" json:"created_at"`
-	UpdatedAt    time.Time  `gorm:"type:timestamptz" json:"updated_at"`
-	ApprovedBy   *uuid.UUID `gorm:"type:uuid" json:"approved_by"`
-	ApprovedDate *time.Time `gorm:"type:timestamptz" json:"approved_date"`
-	Status       string     `gorm:"type:text" json:"status"`
-	RejectRemarks *string   `gorm:"type:text" json:"reject_remarks,omitempty"`
-	PreparedBy   *uuid.UUID `gorm:"type:uuid" json:"prepared_by"`
+	ID            string     `gorm:"primaryKey;size:50" json:"id"`
+	Customer      string     `gorm:"type:varchar(255);not null" json:"customer"`
+	CustomerName  string     `gorm:"-" json:"customer_name,omitempty"`
+	TotalAmount   float64    `gorm:"type:numeric(15,2);not null;default:0" json:"total_amount"`
+	PaymentStatus string     `gorm:"type:text" json:"payment_status"`
+	CreatedAt     time.Time  `gorm:"type:timestamptz" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"type:timestamptz" json:"updated_at"`
+	ApprovedBy    *uuid.UUID `gorm:"type:uuid" json:"approved_by"`
+	ApprovedDate  *time.Time `gorm:"type:timestamptz" json:"approved_date"`
+	Status        string     `gorm:"type:text" json:"status"`
+	RejectRemarks *string    `gorm:"type:text" json:"reject_remarks,omitempty"`
+	PreparedBy    *uuid.UUID `gorm:"type:uuid" json:"prepared_by"`
 
 	PreparedByUser *Users        `json:"PreparedByUser,omitempty" gorm:"foreignKey:PreparedBy;references:UserID"`
 	ApprovedByUser *Users        `json:"ApprovedByUser,omitempty" gorm:"foreignKey:ApprovedBy;references:UserID"`

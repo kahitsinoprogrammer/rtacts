@@ -33,7 +33,9 @@ type InvoiceItem = {
 type Invoice = {
   id?: string;
   customer?: string;
+  customer_name?: string;
   total_amount?: number;
+  payment_status?: string;
   created_at?: string;
   approved_date?: string | null;
   status?: string;
@@ -64,6 +66,15 @@ const normalizeStatus = (status?: string): string => {
   if (!status) return "Unknown";
   return status
     .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const normalizePaymentStatus = (status?: string): string => {
+  if (!status) return "-";
+  return status
+    .split("_")
     .filter(Boolean)
     .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
@@ -253,8 +264,9 @@ export default function InvoiceList() {
 
     return invoices.filter((invoice) => {
       const id = invoice.id || "";
-      const customer = invoice.customer || "";
+      const customer = invoice.customer_name || invoice.customer || "";
       const status = invoice.status || "";
+      const paymentStatus = invoice.payment_status || "";
       const rejectRemarksText = getRejectRemarks(invoice);
       const productText = (invoice.items || [])
         .map(
@@ -263,7 +275,7 @@ export default function InvoiceList() {
         )
         .join(" ");
 
-      return `${id} ${customer} ${status} ${rejectRemarksText} ${productText}`
+      return `${id} ${customer} ${status} ${paymentStatus} ${rejectRemarksText} ${productText}`
         .toLowerCase()
         .includes(keyword);
     });
@@ -302,7 +314,7 @@ export default function InvoiceList() {
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by invoice ID, customer, status, remarks, or product..."
+            placeholder="Search by invoice ID, customer, approval status, payment status, remarks, or product..."
             className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 sm:max-w-md"
           />
         </div>
@@ -359,7 +371,7 @@ export default function InvoiceList() {
                 <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-2 md:gap-x-6">
                   <p>
                     <span className="font-medium text-slate-900">Customer:</span>{" "}
-                    {invoice.customer || "-"}
+                    {invoice.customer_name || invoice.customer || "-"}
                   </p>
                   <p>
                     <span className="font-medium text-slate-900">Total:</span>{" "}
@@ -372,6 +384,10 @@ export default function InvoiceList() {
                   <p>
                     <span className="font-medium text-slate-900">Prepared by:</span>{" "}
                     {preparedByName || "-"}
+                  </p>
+                  <p>
+                    <span className="font-medium text-slate-900">Payment status:</span>{" "}
+                    {normalizePaymentStatus(invoice.payment_status)}
                   </p>
                   {approvedDate !== "-" && (
                     <p>
