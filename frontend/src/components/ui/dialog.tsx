@@ -58,7 +58,7 @@ export function DialogOverlay({ className }: { className?: string }) {
   const { onOpenChange } = useDialogContext();
   return (
     <div
-      className={cn("fixed inset-0 z-50 bg-black/40", className)}
+      className={cn("fixed inset-0 z-50 bg-[#102038]/38 backdrop-blur-[3px]", className)}
       onClick={() => onOpenChange(false)}
       aria-hidden="true"
     />
@@ -86,7 +86,7 @@ export function DialogContent({
       aria-modal="true"
       tabIndex={-1}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white shadow-lg",
+        "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] border border-[#d2dfeb] bg-white shadow-[0_28px_68px_rgba(16,32,56,0.22)]",
         className,
       )}
     >
@@ -103,7 +103,12 @@ export function DialogHeader({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex items-center justify-between border-b px-5 py-4", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-between border-b border-[#e1eaf2] px-6 py-5",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -116,7 +121,11 @@ export function DialogTitle({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <h2 className={cn("text-base font-semibold text-slate-900", className)}>{children}</h2>;
+  return (
+    <h2 className={cn("text-lg font-semibold text-[#16324f]", className)}>
+      {children}
+    </h2>
+  );
 }
 
 export function DialogBody({
@@ -126,7 +135,7 @@ export function DialogBody({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn("px-5 py-4", className)}>{children}</div>;
+  return <div className={cn("px-6 py-5", className)}>{children}</div>;
 }
 
 export function DialogFooter({
@@ -137,7 +146,12 @@ export function DialogFooter({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex items-center justify-end gap-2 border-t px-5 py-4", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-end gap-2 border-t border-[#e1eaf2] px-6 py-5",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -155,11 +169,13 @@ export function DialogClose({
     <button
       type="button"
       onClick={() => onOpenChange(false)}
-      className={cn("rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100", className)}
+      className={cn(
+        "rounded-xl px-3 py-2 text-[#627991] transition-colors hover:bg-[#eef5fb]",
+        className,
+      )}
       aria-label="Close dialog"
     >
-      {children ?? "x"}
+      {children ?? "Close"}
     </button>
   );
 }
-

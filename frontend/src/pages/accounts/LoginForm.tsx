@@ -1,12 +1,18 @@
 import { useForm } from "react-hook-form";
-import PasswordInput from "../../components/PasswordInput";
-import OrdinaryInput from "../../components/OrdinaryInput";
 import { useNavigate } from "react-router-dom";
+import OrdinaryInput from "../../components/OrdinaryInput";
+import PasswordInput from "../../components/PasswordInput";
 
 interface LoginFormData {
   username: string;
   password: string;
 }
+
+const highlights = [
+  "Module-based navigation for accounting operations",
+  "Cleaner invoice, voucher, inventory, and user management views",
+  "Professional workspace styling aligned to the RTACS brand direction",
+];
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -29,22 +35,18 @@ export default function LoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // 👈 important for cookies
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
-      // Try to parse JSON (backend always returns JSON in your case)
       const result = await response.json();
 
       if (!response.ok) {
-        // Backend sends: { error: "Invalid username or password" }
         const message = result?.error || "Login failed";
         alert(message);
         return;
       }
 
-      // Success: we don't care about the body, cookie is set
-      // alert("LOGIN SUCCESSFUL!");
       navigate("/dashboard");
     } catch (err) {
       console.error("Error submitting form:", err);
@@ -53,60 +55,97 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-900 px-4">
-      <form
-        onSubmit={handleSubmit(submitHandler)}
-        className="w-full max-w-md bg-white shadow-xl rounded-2xl p-8 space-y-6"
-      >
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">
-          Login to Your Account
-        </h2>
+    <div className="rtacs-auth-shell">
+      <div className="rtacs-auth-glow rtacs-auth-glow--left" />
+      <div className="rtacs-auth-glow rtacs-auth-glow--right" />
 
-        <OrdinaryInput
-          label="Username"
-          register={register("username", {
-            required: "Username is required",
-          })}
-          error={errors.username}
-        />
+      <div className="rtacs-auth-layout">
+        <section className="rtacs-auth-brand-panel">
+          <div className="rtacs-auth-brandmark">
+            <span>R</span>
+          </div>
 
-        <PasswordInput
-          label="Password"
-          register={register("password", {
-            required: "Password is required",
-            minLength: {
-              value: 6,
-              message: "Password must be at least 6 characters",
-            },
-          })}
-          error={errors.password}
-        />
+          <div className="rtacs-auth-brand-copy">
+            <span className="rtacs-eyebrow">RTACS Accounting</span>
+            <h1>Professional finance operations, organized by module.</h1>
+            <p>
+              An Odoo-inspired workspace for invoices, payables, inventory, chart
+              of accounts, and user administration.
+            </p>
+          </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-blue-900 text-white font-medium py-2 px-4 rounded-lg cursor-pointer"
-        >
-          {isSubmitting ? "Logging in..." : "Login"}
-        </button>
+          <div className="rtacs-auth-highlights">
+            {highlights.map((item) => (
+              <div key={item} className="rtacs-auth-highlight">
+                <span className="rtacs-auth-highlight__dot" />
+                <p>{item}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        {/* Extra links */}
-        <div className="text-center text-sm text-gray-600 mt-3">
-          <p>
-            Forgot your password?{" "}
-            <a href="#" className="text-blue-900 hover:underline">
-              Reset it
-            </a>
-          </p>
-          <p className="mt-1">
-            Don’t have an account?{" "}
-            <a href="/registration" className="text-blue-900 hover:underline">
-              Sign up
-            </a>
-          </p>
-        </div>
-      </form>
+        <section className="rtacs-auth-form-panel">
+          <form
+            onSubmit={handleSubmit(submitHandler)}
+            className="rtacs-auth-card"
+          >
+            <div className="rtacs-auth-card__header">
+              <span className="rtacs-eyebrow">Secure Login</span>
+              <h2>Sign in to your workspace</h2>
+              <p>
+                Use your RTACS account to continue to the accounting control
+                center.
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              <OrdinaryInput
+                label="Username"
+                register={register("username", {
+                  required: "Username is required",
+                })}
+                error={errors.username}
+                placeholder="Enter your username"
+              />
+
+              <PasswordInput
+                label="Password"
+                register={register("password", {
+                  required: "Password is required",
+                  minLength: {
+                    value: 6,
+                    message: "Password must be at least 6 characters",
+                  },
+                })}
+                error={errors.password}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rtacs-auth-submit"
+            >
+              {isSubmitting ? "Logging in..." : "Enter Workspace"}
+            </button>
+
+            <div className="rtacs-auth-links">
+              <p>
+                Forgot your password?{" "}
+                <a href="#" className="rtacs-text-link">
+                  Reset it
+                </a>
+              </p>
+              <p>
+                Don&apos;t have an account?{" "}
+                <a href="/registration" className="rtacs-text-link">
+                  Sign up
+                </a>
+              </p>
+            </div>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }

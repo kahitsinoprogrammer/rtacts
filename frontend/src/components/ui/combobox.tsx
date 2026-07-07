@@ -59,17 +59,30 @@ export function Combobox({
         role="combobox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="mt-1 flex w-full items-center justify-between font-normal"
+        className="mt-1 flex h-11 w-full items-center justify-between rounded-xl border-[#c7d6e6] px-3.5 font-normal"
       >
-        <span className={selectedItem ? "truncate" : "truncate text-slate-400"}>
+        <span className={selectedItem ? "truncate" : "truncate text-[#8aa0b7]"}>
           {selectedItem?.label || placeholder}
         </span>
-        <span className="ml-2 text-xs text-slate-500">v</span>
+        <svg
+          className={cn(
+            "ml-2 h-4 w-4 text-[#627991] transition-transform duration-200",
+            open && "rotate-90",
+          )}
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m7 4l6 6l-6 6" />
+        </svg>
       </Button>
 
       {open && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-slate-300 bg-white shadow-lg">
-          <div className="border-b border-slate-100 p-2">
+        <div className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-2xl border border-[#c7d6e6] bg-white shadow-[0_22px_48px_rgba(22,50,79,0.18)]">
+          <div className="border-b border-[#e2ebf3] p-3">
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -79,7 +92,7 @@ export function Combobox({
           </div>
 
           {filteredItems.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-slate-500">{emptyText}</div>
+            <div className="px-4 py-3 text-sm text-[#6f8297]">{emptyText}</div>
           ) : (
             filteredItems.map((item) => (
               <button
@@ -91,10 +104,10 @@ export function Combobox({
                   setOpen(false);
                 }}
                 className={cn(
-                  "block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-b-0",
+                  "block w-full border-b border-[#edf3f8] px-4 py-3 text-left text-sm transition-colors last:border-b-0",
                   item.value === value
-                    ? "bg-slate-100 text-slate-900"
-                    : "text-slate-700 hover:bg-slate-50",
+                    ? "bg-[#eef5fb] text-[#16324f]"
+                    : "text-[#46607c] hover:bg-[#f5f9fc]",
                 )}
               >
                 {item.label}
