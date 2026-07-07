@@ -6,11 +6,6 @@ type Supplier = {
   email?: string | null;
 };
 
-type Customer = {
-  customer_id?: string | null;
-  customer_name?: string | null;
-};
-
 type PreparedByUser = {
   FirstName?: string | null;
   LastName?: string | null;
@@ -23,10 +18,6 @@ type CheckVoucherItem = {
   id?: string;
   AccountID?: number | null;
   account_id?: number | null;
-  CustomerID?: string | null;
-  customer_id?: string | null;
-  Customer?: Customer | null;
-  customer?: Customer | null;
   Debit?: number;
   debit?: number;
   Credit?: number;
@@ -446,10 +437,6 @@ export default function CVlist() {
                   {items.length > 0 && (
                     <ul className="space-y-2">
                       {displayedItems.map((item, itemIndex) => {
-                        const customer = item.Customer || item.customer;
-                        const customerId = item.CustomerID || item.customer_id || "";
-                        const customerName = customer?.customer_name || customerId || "-";
-
                         return (
                           <li
                             key={item.ID || item.id || `line-${itemIndex}`}
@@ -459,7 +446,6 @@ export default function CVlist() {
                               Line {item.LineNo || item.line_no || itemIndex + 1}
                             </p>
                             <p>Account: {item.AccountID ?? item.account_id ?? "-"}</p>
-                            <p>Customer: {customerName}</p>
                             <p>
                               Debit: {toNumber(item.Debit ?? item.debit).toFixed(2)} | Credit:{" "}
                               {toNumber(item.Credit ?? item.credit).toFixed(2)}

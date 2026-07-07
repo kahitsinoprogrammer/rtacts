@@ -32,7 +32,6 @@ type InventoryManageResponse struct {
 
 type CheckVoucherLookupsResponse struct {
 	Suppliers []SupplierLookupOption `json:"suppliers"`
-	Customers []LookupOption         `json:"customers"`
 	Accounts  []LookupOption         `json:"accounts"`
 }
 

@@ -48,8 +48,6 @@ type CheckVoucherItem struct {
 	CheckVoucherID string     `json:"check_voucher_id"`
 	AccountID      *int       `json:"account_id"`
 	Account        *Coa       `json:"account,omitempty" gorm:"foreignKey:AccountID;references:ID"`
-	CustomerID     *uuid.UUID `json:"customer_id"`
-	Customer       *Customer  `json:"customer,omitempty" gorm:"foreignKey:CustomerID;references:CustomerID"`
 	Debit          float64    `json:"debit"`
 	Credit         float64    `json:"credit"`
 	VatTypeID      *uuid.UUID `json:"vat_type_id"`

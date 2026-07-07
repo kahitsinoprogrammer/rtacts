@@ -14,13 +14,11 @@ type SupplierLookupOption = LookupOption & {
 
 type CheckVoucherLookupsResponse = {
   suppliers?: SupplierLookupOption[];
-  customers?: LookupOption[];
   accounts?: LookupOption[];
 };
 
 type CVItemForm = {
   accountId: string;
-  customerId: string;
   dr: string;
   cr: string;
   vatType: string;
@@ -35,7 +33,6 @@ type CVFormValues = {
 
 const emptyItem = (): CVItemForm => ({
   accountId: "",
-  customerId: "",
   dr: "",
   cr: "",
   vatType: "",
@@ -43,7 +40,6 @@ const emptyItem = (): CVItemForm => ({
 
 export default function CVcreate() {
   const [supplierOptions, setSupplierOptions] = useState<SupplierLookupOption[]>([]);
-  const [customerOptions, setCustomerOptions] = useState<LookupOption[]>([]);
   const [accountOptions, setAccountOptions] = useState<LookupOption[]>([]);
   const [loadError, setLoadError] = useState("");
 
@@ -85,7 +81,6 @@ export default function CVcreate() {
 
         const data = (await res.json()) as CheckVoucherLookupsResponse;
         setSupplierOptions(Array.isArray(data.suppliers) ? data.suppliers : []);
-        setCustomerOptions(Array.isArray(data.customers) ? data.customers : []);
         setAccountOptions(Array.isArray(data.accounts) ? data.accounts : []);
       } catch (err) {
         setLoadError(
@@ -127,7 +122,6 @@ export default function CVcreate() {
       supplier_id: values.supplierId,
       items: values.items.map((item, index) => ({
         account_id: item.accountId ? Number(item.accountId) : null,
-        customer_id: item.customerId || null,
         debit: item.dr ? Number(item.dr) : 0,
         credit: item.cr ? Number(item.cr) : 0,
         vat_type_id: item.vatType || null,
@@ -257,7 +251,7 @@ export default function CVcreate() {
                     key={field.id}
                     className="rounded-lg border border-slate-200 bg-white p-3"
                   >
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-6">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
                       <div className="relative lg:col-span-2">
                         <label className="block text-sm font-medium text-slate-700">
                           Account No / Name
@@ -284,36 +278,6 @@ export default function CVcreate() {
                         {errors.items?.[index]?.accountId && (
                           <p className="mt-1 text-xs text-rose-600">
                             {errors.items[index]?.accountId?.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Customer
-                        </label>
-                        <Controller
-                          control={control}
-                          name={`items.${index}.customerId` as const}
-                          rules={{ required: "Customer is required" }}
-                          render={({ field }) => (
-                            <Combobox
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                              items={customerOptions.map((option) => ({
-                                value: option.value,
-                                label: option.label,
-                                searchText: option.search_text,
-                              }))}
-                              placeholder="Select customer..."
-                              searchPlaceholder="Search customer..."
-                              emptyText="No customer found"
-                            />
-                          )}
-                        />
-                        {errors.items?.[index]?.customerId && (
-                          <p className="mt-1 text-xs text-rose-600">
-                            {errors.items[index]?.customerId?.message}
                           </p>
                         )}
                       </div>

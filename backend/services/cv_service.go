@@ -49,11 +49,6 @@ func (s *CVService) GetCreateLookups(userID string) (*models.CheckVoucherLookups
 		return nil, err
 	}
 
-	customers, err := buildCustomerLookupOptions(user.CompanyId)
-	if err != nil {
-		return nil, err
-	}
-
 	accounts, err := buildAccountLookupOptions(user.CompanyId)
 	if err != nil {
 		return nil, err
@@ -61,7 +56,6 @@ func (s *CVService) GetCreateLookups(userID string) (*models.CheckVoucherLookups
 
 	return &models.CheckVoucherLookupsResponse{
 		Suppliers: suppliers,
-		Customers: customers,
 		Accounts:  accounts,
 	}, nil
 }
@@ -86,7 +80,6 @@ func (s *CVService) ViewCheckVouchers(userID string) ([]models.CheckVoucher, err
 		Preload("ApprovedByUser").
 		Preload("Items").
 		Preload("Items.Account").
-		Preload("Items.Customer").
 		Order("created_at DESC").
 		Find(&vouchers).Error
 	if err != nil {
@@ -128,7 +121,6 @@ func (s *CVService) CreateCheckVoucher(userID string, req models.CreateCheckVouc
 			items = append(items, models.CheckVoucherItem{
 				CheckVoucherID: voucher.ID,
 				AccountID:      item.AccountID,
-				CustomerID:     item.CustomerID,
 				Debit:          item.Debit,
 				Credit:         item.Credit,
 				VatTypeID:      item.VatTypeID,
@@ -258,7 +250,6 @@ func (s *CVService) getVoucherForExport(companyID uuid.UUID, voucherID string) (
 			return db.Order("line_no ASC")
 		}).
 		Preload("Items.Account").
-		Preload("Items.Customer").
 		First(&voucher).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
