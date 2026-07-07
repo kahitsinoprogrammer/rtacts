@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Combobox } from "../../components/ui/combobox";
 import {
   invoiceTaxTypeOptions,
@@ -65,7 +65,6 @@ export default function InvoiceCreate() {
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
     reset,
     formState: { isSubmitting, errors },
@@ -81,6 +80,18 @@ export default function InvoiceCreate() {
     control,
     name: "items",
   });
+
+  const selectedCustomerId = useWatch({
+    control,
+    name: "customerId",
+    defaultValue: "",
+  });
+  const watchedItems =
+    useWatch({
+      control,
+      name: "items",
+      defaultValue: [emptyItem()],
+    }) || [];
 
   useEffect(() => {
     const loadLookups = async () => {
@@ -107,9 +118,6 @@ export default function InvoiceCreate() {
 
     void loadLookups();
   }, []);
-
-  const selectedCustomerId = watch("customerId");
-  const watchedItems = watch("items");
 
   const customerById = useMemo(
     () => new Map(customerOptions.map((option) => [option.value, option])),
@@ -188,6 +196,19 @@ export default function InvoiceCreate() {
     () =>
       new Map((preview.items || []).map((item) => [item.line_no, item])),
     [preview.items],
+  );
+
+  const fallbackTotalAmount = useMemo(
+    () =>
+      watchedItems.reduce((total, item) => {
+        const selectedProduct = productById.get(item?.productId || "");
+        if (!selectedProduct) return total;
+
+        const parsedQuantity = Number(item?.quantity);
+        const quantity = Number.isFinite(parsedQuantity) ? parsedQuantity : 0;
+        return total + quantity * selectedProduct.unit_price;
+      }, 0),
+    [productById, watchedItems],
   );
 
   const onSubmit = async (values: InvoiceFormValues) => {
@@ -319,7 +340,9 @@ export default function InvoiceCreate() {
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">
-                  Total: {(preview.total_amount || 0).toFixed(2)}
+                  Total: {(
+                    preview.items?.length ? preview.total_amount || 0 : fallbackTotalAmount
+                  ).toFixed(2)}
                 </p>
               </div>
 
@@ -331,6 +354,17 @@ export default function InvoiceCreate() {
                   const selectedTaxType =
                     watchedItems[index]?.taxType || "vatable";
                   const previewItem = previewByLineNo.get(index + 1);
+                  const parsedQuantity = Number(watchedItems[index]?.quantity);
+                  const quantity = Number.isFinite(parsedQuantity) ? parsedQuantity : 0;
+                  const fallbackUnitPrice = selectedProduct?.unit_price ?? null;
+                  const fallbackAmount =
+                    selectedProduct && quantity > 0
+                      ? quantity * selectedProduct.unit_price
+                      : null;
+                  const displayedUnitPrice =
+                    previewItem?.unit_price ?? fallbackUnitPrice;
+                  const displayedAmount =
+                    previewItem?.total_amount ?? fallbackAmount;
 
                   return (
                     <div
@@ -398,8 +432,8 @@ export default function InvoiceCreate() {
                           <input
                             type="text"
                             value={
-                              previewItem
-                                ? previewItem.unit_price.toFixed(2)
+                              typeof displayedUnitPrice === "number"
+                                ? displayedUnitPrice.toFixed(2)
                                 : "-"
                             }
                             readOnly
@@ -429,8 +463,8 @@ export default function InvoiceCreate() {
                             type="text"
                             readOnly
                             value={
-                              previewItem
-                                ? previewItem.total_amount.toFixed(2)
+                              typeof displayedAmount === "number"
+                                ? displayedAmount.toFixed(2)
                                 : "-"
                             }
                             className="mt-1 w-full rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700"
