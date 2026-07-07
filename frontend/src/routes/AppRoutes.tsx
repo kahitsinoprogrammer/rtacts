@@ -17,6 +17,8 @@ import AccountCreate from "../pages/accounts/AccountCreate";
 import AccountView from "../pages/accounts/AccountView";
 import CVcreate from "../pages/cv/CVcreate";
 import CVlist from "../pages/cv/CVlist";
+import JVcreate from "../pages/jv/JVcreate";
+import JVlist from "../pages/jv/JVlist";
 import InventoryCreate from "../pages/inventory/InventoryCreate";
 import InventoryList from "../pages/inventory/inventoryList";
 import InvoiceCreate from "../pages/invoice/InvoiceCreate";
@@ -53,6 +55,8 @@ const AppRoutes = () => {
           <Route path="/account/view" element={<AccountView />} />
           <Route path="/checkvoucher/create" element={<CVcreate />} />
           <Route path="/checkvoucher/view" element={<CVlist />} />
+          <Route path="/journalvoucher/create" element={<JVcreate />} />
+          <Route path="/journalvoucher/view" element={<JVlist />} />
           <Route path="/invoice/create" element={<InvoiceCreate />} />
           <Route path="/invoice/view" element={<InvoiceList />} />
           <Route path="/inventory/create" element={<InventoryCreate />} />

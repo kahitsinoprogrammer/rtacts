@@ -195,6 +195,26 @@ const navigationSections: NavSection[] = [
           },
         ],
       },
+      {
+        id: "journal-vouchers",
+        label: "Journal Vouchers",
+        icon: "voucher",
+        summary: "Record journal entries with approval and voucher tracking.",
+        children: [
+          {
+            label: "View Journal Vouchers",
+            to: "/journalvoucher/view",
+            badge: "List",
+            summary: "Review journal voucher status, approvals, and downloads.",
+          },
+          {
+            label: "Create Journal Voucher",
+            to: "/journalvoucher/create",
+            badge: "New",
+            summary: "Prepare a new journal voucher for processing.",
+          },
+        ],
+      },
     ],
   },
   {

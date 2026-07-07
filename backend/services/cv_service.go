@@ -167,7 +167,7 @@ func (s *CVService) DownloadApprovedCheckVoucherExcel(userID string, voucherID s
 		return nil, "", err
 	}
 
-	fileBytes, err := buildCheckVoucherExcel(voucher, company)
+	fileBytes, err := buildCheckVoucherExcel(voucher, company, "Check Disbursement Voucher")
 	if err != nil {
 		return nil, "", err
 	}
@@ -273,7 +273,7 @@ func (s *CVService) getCompanyByID(companyID uuid.UUID) (models.Companies, error
 	return company, nil
 }
 
-func buildCheckVoucherExcel(voucher models.CheckVoucher, company models.Companies) ([]byte, error) {
+func buildCheckVoucherExcel(voucher models.CheckVoucher, company models.Companies, documentTitle string) ([]byte, error) {
 	f := excelize.NewFile()
 	defer func() {
 		_ = f.Close()
@@ -419,7 +419,7 @@ func buildCheckVoucherExcel(voucher models.CheckVoucher, company models.Companie
 	if err := f.MergeCell(sheet, "C1", "G2"); err != nil {
 		return nil, err
 	}
-	f.SetCellValue(sheet, "C1", "Check Disbursement Voucher")
+	f.SetCellValue(sheet, "C1", documentTitle)
 	if err := f.SetCellStyle(sheet, "C1", "G2", titleStyle); err != nil {
 		return nil, err
 	}

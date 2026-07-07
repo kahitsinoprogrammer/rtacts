@@ -13,6 +13,7 @@ func RegisterRoutes(r *gin.Engine) {
 	supplierController := controllers.NewSupplierController()
 	customerController := controllers.NewCustomerController()
 	cvController := controllers.NewCVController()
+	jvController := controllers.NewJVController()
 	invoiceController := controllers.NewInvoiceController()
 	inventoryController := controllers.NewInventoryController()
 	r.POST("/accounts", accountController.CreateAccount)
@@ -87,6 +88,15 @@ func RegisterRoutes(r *gin.Engine) {
 			// checkVouchers.GET("", cvController.ViewCheckVouchers)
 			// checkVouchers.PUT("/:id", cvController.UpdateCheckVoucher)
 			// checkVouchers.PATCH("/:id/deactivate", cvController.DeactivateCheckVoucher)
+		}
+
+		journalVouchers := protected.Group("/journal-vouchers")
+		{
+			journalVouchers.GET("/lookups", jvController.GetCreateLookups)
+			journalVouchers.POST("", jvController.CreateJournalVoucher)
+			journalVouchers.GET("", jvController.ViewJournalVouchers)
+			journalVouchers.GET("/:id/excel", jvController.DownloadApprovedJournalVoucherExcel)
+			journalVouchers.PATCH("/:id/status", jvController.UpdateJournalVoucherStatus)
 		}
 
 		invoices := protected.Group("/invoices")

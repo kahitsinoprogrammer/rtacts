@@ -59,6 +59,14 @@ const baseModuleCards: ModuleCard[] = [
     primary: { label: "View Chart of Accounts", to: "/chartofaccounts/view" },
     secondary: { label: "Create Account Setup", to: "/chartofaccounts/create" },
   },
+  {
+    eyebrow: "Accounting Core",
+    title: "Journal Vouchers",
+    description:
+      "Prepare journal entries, route them for approval, and keep voucher records organized.",
+    primary: { label: "Review Journal Vouchers", to: "/journalvoucher/view" },
+    secondary: { label: "Create Journal Voucher", to: "/journalvoucher/create" },
+  },
 ];
 
 const workflowCards = [
