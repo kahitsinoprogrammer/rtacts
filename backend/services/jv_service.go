@@ -79,11 +79,14 @@ func (s *JVService) CreateJournalVoucher(userID string, req models.CreateJournal
 		return nil, errors.New("items are required")
 	}
 
+	remarks := normalizeOptionalString(req.Remarks)
+
 	voucher := &models.JournalVoucher{
 		SupplierID: req.SupplierID,
 		CompanyID:  user.CompanyId,
 		PreparedBy: &uid,
 		Status:     "awaiting approval",
+		Remarks:    remarks,
 	}
 
 	err = config.DB.Transaction(func(tx *gorm.DB) error {
@@ -271,6 +274,7 @@ func journalVoucherToExportVoucher(voucher models.JournalVoucher) models.CheckVo
 		ApprovedBy:     voucher.ApprovedBy,
 		Status:         voucher.Status,
 		ApprovedDate:   voucher.ApprovedDate,
+		Remarks:        voucher.Remarks,
 		RejectRemarks:  voucher.RejectRemarks,
 		CreatedAt:      voucher.CreatedAt,
 		UpdatedAt:      voucher.UpdatedAt,

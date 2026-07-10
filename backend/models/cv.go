@@ -16,6 +16,7 @@ type CreateCheckVoucherRequest struct {
 	CompanyID  uuid.UUID          `json:"company_id"`
 	PreparedBy *uuid.UUID         `json:"prepared_by"`
 	Status     *string            `json:"status"`
+	Remarks    *string            `json:"remarks"`
 	Items      []CheckVoucherItem `json:"items"`
 }
 
@@ -32,6 +33,7 @@ type CheckVoucher struct {
 	ApprovedBy    *uuid.UUID
 	Status        string
 	ApprovedDate  *time.Time
+	Remarks       *string `gorm:"type:text" json:"remarks,omitempty"`
 	RejectRemarks *string `json:"reject_remarks,omitempty"`
 
 	CreatedAt time.Time

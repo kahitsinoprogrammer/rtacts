@@ -35,6 +35,8 @@ type JournalVoucher = {
   created_at?: string;
   ApprovedDate?: string | null;
   approved_date?: string | null;
+  Remarks?: string | null;
+  remarks?: string | null;
   RejectRemarks?: string | null;
   reject_remarks?: string | null;
   Supplier?: Supplier | null;
@@ -97,6 +99,9 @@ const getVoucherId = (voucher: JournalVoucher): string =>
 
 const getRejectRemarks = (voucher: JournalVoucher): string =>
   toStr(voucher.RejectRemarks ?? voucher.reject_remarks).trim();
+
+const getRemarks = (voucher: JournalVoucher): string =>
+  toStr(voucher.Remarks ?? voucher.remarks).trim();
 
 const getErrorMessage = async (response: Response, fallback: string) => {
   const raw = (await response.text()).trim();
@@ -301,9 +306,10 @@ export default function JVlist() {
       const status = voucher.Status || voucher.status || "";
       const supplierName = supplier?.supplier_name || "";
       const supplierEmail = supplier?.email || "";
+      const remarksText = getRemarks(voucher);
       const rejectRemarksText = getRejectRemarks(voucher);
 
-      return `${id} ${supplierName} ${supplierEmail} ${status} ${rejectRemarksText}`
+      return `${id} ${supplierName} ${supplierEmail} ${status} ${remarksText} ${rejectRemarksText}`
         .toLowerCase()
         .includes(keyword);
     });
@@ -382,6 +388,7 @@ export default function JVlist() {
             const displayedItems = isExpanded ? items : items.slice(0, 2);
             const decisionPending = canDecideVoucher(rawStatus);
             const downloadReady = canDownloadVoucher(rawStatus);
+            const remarksText = getRemarks(voucher);
             const rejectRemarksText = getRejectRemarks(voucher);
 
             return (
@@ -424,6 +431,12 @@ export default function JVlist() {
                     </p>
                   )}
                 </div>
+
+                {remarksText && (
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <span className="font-medium text-slate-900">Remarks:</span> {remarksText}
+                  </div>
+                )}
 
                 {rejectRemarksText && (
                   <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">

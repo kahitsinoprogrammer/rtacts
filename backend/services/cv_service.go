@@ -104,11 +104,14 @@ func (s *CVService) CreateCheckVoucher(userID string, req models.CreateCheckVouc
 		return nil, errors.New("items are required")
 	}
 
+	remarks := normalizeOptionalString(req.Remarks)
+
 	voucher := &models.CheckVoucher{
 		SupplierID: req.SupplierID,
 		CompanyID:  user.CompanyId,
 		PreparedBy: &uid,
 		Status:     "awaiting approval",
+		Remarks:    remarks,
 	}
 
 	err = config.DB.Transaction(func(tx *gorm.DB) error {
@@ -546,6 +549,7 @@ func buildCheckVoucherExcel(voucher models.CheckVoucher, company models.Companie
 	if err := f.MergeCell(sheet, fmt.Sprintf("B%d", descriptionRow), fmt.Sprintf("G%d", descriptionEndRow)); err != nil {
 		return nil, err
 	}
+	f.SetCellValue(sheet, fmt.Sprintf("B%d", descriptionRow), derefOptionalString(voucher.Remarks))
 	if err := f.SetCellStyle(sheet, fmt.Sprintf("B%d", descriptionRow), fmt.Sprintf("G%d", descriptionEndRow), descriptionStyle); err != nil {
 		return nil, err
 	}
@@ -1015,4 +1019,13 @@ func derefOptionalString(v *string) string {
 		return ""
 	}
 	return *v
+}
+
+func normalizeOptionalString(v *string) *string {
+	trimmed := strings.TrimSpace(derefOptionalString(v))
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
 }

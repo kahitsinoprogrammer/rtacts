@@ -28,6 +28,7 @@ type JVFormValues = {
   supplierSearch: string;
   supplierId: string;
   supplierContactPerson: string;
+  remarks: string;
   items: JVItemForm[];
 };
 
@@ -56,6 +57,7 @@ export default function JVcreate() {
       supplierSearch: "",
       supplierId: "",
       supplierContactPerson: "",
+      remarks: "",
       items: [emptyItem()],
     },
   });
@@ -120,6 +122,7 @@ export default function JVcreate() {
 
     const payload = {
       supplier_id: values.supplierId,
+      remarks: values.remarks.trim() || null,
       items: values.items.map((item, index) => ({
         account_id: item.accountId ? Number(item.accountId) : null,
         debit: item.dr ? Number(item.dr) : 0,
@@ -151,6 +154,7 @@ export default function JVcreate() {
       supplierSearch: "",
       supplierId: "",
       supplierContactPerson: "",
+      remarks: "",
       items: [emptyItem()],
     });
   };
@@ -366,6 +370,27 @@ export default function JVcreate() {
               </div>
             </div>
 
+            <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-slate-900">Remarks</h3>
+                <p className="text-xs text-slate-500">
+                  Add any supporting note or description for this journal voucher.
+                </p>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="block text-sm font-medium text-slate-700">
+                  Remarks
+                </label>
+                <textarea
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                  placeholder="Enter remarks..."
+                  {...register("remarks")}
+                />
+              </div>
+            </div>
+
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
               <button
                 type="button"
@@ -374,6 +399,7 @@ export default function JVcreate() {
                     supplierSearch: "",
                     supplierId: "",
                     supplierContactPerson: "",
+                    remarks: "",
                     items: [emptyItem()],
                   });
                 }}
